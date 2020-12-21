@@ -2,7 +2,7 @@
 
 A project demonstrating how to do P2P encrypted communication using LoRa on the BastWAN.
 
-It is using the LoRa library by Sandeep Mistry. You could replace this library with whatever flavor ypu prefer, just pay attention to which pins are in use.
+It is using the LoRa library by Sandeep Mistry. You could replace this library with whatever flavor you prefer, just pay attention to which pins are in use.
 
 The AES encryption / decryption is the original [Rijndael implementation](http://efgh.com/software/rijndael.htm), and is provided in the sketch. 
 
