@@ -1,3 +1,13 @@
+#define REG_OCP 0x0B
+#define REG_PA_CONFIG 0x09
+#define REG_LNA 0x0c
+#define REG_OP_MODE 0x01
+#define REG_MODEM_CONFIG_1 0x1d
+#define REG_MODEM_CONFIG_2 0x1e
+#define REG_MODEM_CONFIG_3 0x26
+#define REG_PA_DAC 0x4D
+#define PA_DAC_HIGH 0x87
+
 #define RFM_TCXO (40u)
 #define RFM_SWITCH (41u)
 #define CBC 0
@@ -8,6 +18,7 @@ uint8_t myMode = ECB;
 bool needEncryption = true;
 uint8_t SecretKey[33] = "YELLOW SUBMARINEENIRAMBUS WOLLEY";
 uint8_t encBuf[128], hexBuf[256];
+uint8_t msgBuf[256];
 
 void hexDump(uint8_t *, uint16_t);
 uint16_t encryptECB(uint8_t*);
@@ -68,13 +79,11 @@ void decryptECB(uint8_t* myBuf, uint8_t olen) {
 }
 
 uint16_t encryptECB(uint8_t* myBuf) {
-  uint8_t len = 0;
+  // first ascertain length
+  uint8_t len = strlen((char*)myBuf);
   uint16_t olen;
   struct AES_ctx ctx;
-  // first ascertain length
-  while (myBuf[len] > 31) len += 1;
   // prepare the buffer
-  myBuf[len] = 0;
   olen = len;
   if (olen != 16) {
     if (olen % 16 > 0) {
@@ -82,8 +91,12 @@ uint16_t encryptECB(uint8_t* myBuf) {
       else olen += 16 - (olen % 16);
     }
   }
+  SerialUSB.print("[encryptECB]: ");
+  SerialUSB.print("olen = " + String(olen));
+  SerialUSB.println(", len = " + String(len));
   memset(encBuf, (olen - len), olen);
   memcpy(encBuf, myBuf, len);
+  encBuf[len] = 0;
   AES_init_ctx(&ctx, (const uint8_t*)SecretKey);
   uint8_t rounds = olen / 16, steps = 0;
   for (uint8_t ix = 0; ix < rounds; ix++) {
@@ -158,6 +171,8 @@ void setPWD(char *buff) {
 }
 
 void sendPacket(char *buff) {
+  LoRa.idle();
+  LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
   uint16_t olen = strlen(buff);
   if (needEncryption) {
     olen = encryptECB((uint8_t*)buff);
@@ -184,11 +199,8 @@ void sendPacket(char *buff) {
   Serial.println(" done!");
   delay(500);
   digitalWrite(LED_BUILTIN, 0);
-  if (needEncryption) {
-    SerialUSB.println((char*)hexBuf);
-  } else {
-    SerialUSB.println(buff);
-  }
+  LoRa.receive();
+  LoRa.writeRegister(REG_LNA, 0x23); // TURN ON LNA FOR RECEIVE
 }
 
 void showHelp() {
