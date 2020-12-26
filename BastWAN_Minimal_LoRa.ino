@@ -1,5 +1,6 @@
 #include <SPI.h>
 #include <LoRa.h>
+#include <LoRandom.h>
 #include "aes.c"
 #include "helper.h"
 
@@ -17,6 +18,8 @@ void setup() {
     SerialUSB.println("Starting LoRa failed!\nNow that's disappointing...");
     while (1);
   }
+  stockUpRandom();
+  // first fill a 256-byte array with random bytes
   LoRa.setSpreadingFactor(10);
   LoRa.setSignalBandwidth(250e3);
   LoRa.setCodingRate4(5);
@@ -55,19 +58,29 @@ void loop() {
       msgBuf[ix++] = c;
       // filter out non-printable chars (like 0x1A)
     } msgBuf[ix] = 0;
-    SerialUSB.print("Received packet: `");
+    SerialUSB.print("Received packet: ");
     if (needEncryption) {
       SerialUSB.println(" . Decrypting...");
       decryptECB(msgBuf, strlen((char*)msgBuf));
       memset(msgBuf, 0, 256);
       memcpy(msgBuf, encBuf, strlen((char*)encBuf));
     }
-    SerialUSB.print((char*)msgBuf);
-    SerialUSB.print("` with RSSI ");
+    // Print 4-byte ID
+    SerialUSB.print("ID: ");
+    hex2array(msgBuf, hexBuf, 8);
+    for (uint8_t xx = 0; xx < 4; xx++) {
+      uint8_t yy = hexBuf[xx];
+      if (yy < 16) SerialUSB.write('0');
+      SerialUSB.print(yy, HEX);
+    }
+    SerialUSB.write('\n');
+    SerialUSB.println((char*)msgBuf + 8);
+    SerialUSB.print("RSSI: ");
     SerialUSB.println(LoRa.packetRssi());
     // if message doesn't start with "RSSI: -" pong with RSSI
-    msgBuf[7] = 0;
-    if (strcmp((char*)msgBuf, "RSSI: -") != 0) {
+    uint8_t test = strcmp((char*)msgBuf + 8, "RSSI: -");
+    //SerialUSB.println("test = " + String(test));
+    if (test != 9 && pongBack) {
       LoRa.idle();
       SerialUSB.println("Pong back:");
       delay(1500);
@@ -92,6 +105,8 @@ void loop() {
     else if (c == 'E') needEncryption = true;
     else if (c == 'e') needEncryption = false;
     else if (c == 'P') setPWD((char*)msgBuf + 1);
+    else if (c == 'R') setPongBack(true);
+    else if (c == 'r') setPongBack(false);
     else {
       SerialUSB.println((char*)msgBuf);
       showHelp();

@@ -16,17 +16,28 @@
 
 uint8_t myMode = ECB;
 bool needEncryption = true;
+bool pongBack = false;
 uint8_t SecretKey[33] = "YELLOW SUBMARINEENIRAMBUS WOLLEY";
-uint8_t encBuf[128], hexBuf[256];
-uint8_t msgBuf[256];
+uint8_t encBuf[128], hexBuf[256], msgBuf[256];
+unsigned char randomStock[256];
+uint8_t randomIndex = 0;
 
-void hexDump(uint8_t *, uint16_t);
 uint16_t encryptECB(uint8_t*);
 void decryptECB(uint8_t*, uint8_t);
 void array2hex(uint8_t *, size_t, uint8_t *, uint8_t);
 void hex2array(uint8_t *, uint8_t *, size_t);
 void sendPacket(char *);
 void setPWD(char *);
+void setPongBack(bool);
+void stockUpRandom();
+void showHelp();
+
+void writeRegister(uint8_t reg, uint8_t value) {
+  LoRa.writeRegister(reg, value);
+}
+uint8_t readRegister(uint8_t reg) {
+  return LoRa.readRegister(reg);
+}
 
 void hex2array(uint8_t *src, uint8_t *dst, size_t sLen) {
   size_t i, n = 0;
@@ -58,14 +69,103 @@ void array2hex(uint8_t *inBuf, size_t sLen, uint8_t *outBuf, uint8_t dashFreq = 
   outBuf[n++] = 0;
 }
 
+void setPWD(char *buff) {
+  // buff can be 32 or 64 bytes:
+  // 32 bytes = plain text
+  // 64 bytes = hex-encoded
+  uint8_t len = strlen(buff), i;
+  for (i = 0; i < len; i++) {
+    if (buff[i] < 32) {
+      buff[i] = 0;
+      i = len + 1;
+    }
+  }
+  len = strlen(buff);
+  SerialUSB.print("setPWD: ");
+  SerialUSB.println(buff);
+  SerialUSB.print("len: ");
+  SerialUSB.println(len);
+  hexDump((uint8_t *)buff, len);
+  if (len == 32) {
+    // copy to the SecretKey buffer
+    memcpy(SecretKey, buff, 32);
+    needEncryption = true;
+    hexDump((uint8_t *)SecretKey, 32);
+    return;
+  }
+  if (len == 64) {
+    // copy to the SecretKey buffer
+    hex2array((uint8_t *)buff, SecretKey, 64);
+    needEncryption = true;
+    hexDump((uint8_t *)SecretKey, 32);
+    return;
+  }
+}
+
+void sendPacket(char *buff) {
+  LoRa.idle();
+  LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
+  uint16_t olen = strlen(buff);
+//  SerialUSB.println("Original buff:");
+//  hexDump((uint8_t *)buff, olen);
+//  memcpy(encBuf + 8, buff, olen);
+
+  // prepend UUID
+  // 4 bytes --> 8 bytes
+  uint8_t ix = 0;
+  encBuf[ix++] = randomStock[randomIndex++];
+  encBuf[ix++] = randomStock[randomIndex++];
+  encBuf[ix++] = randomStock[randomIndex++];
+  encBuf[ix++] = randomStock[randomIndex++];
+  array2hex(encBuf, 4, hexBuf);
+  memcpy(encBuf, hexBuf, 8);
+  SerialUSB.println("UUID hex-encoded:");
+  hexDump(encBuf, olen + 8);
+  ix = 8;
+  // reset random stock if needed
+  if (randomIndex > 252) stockUpRandom();
+  olen += 8;
+  SerialUSB.println("Before calling encryption. olen = " + String(olen));
+  memcpy(msgBuf, encBuf, olen);
+  hexDump(msgBuf, olen);
+
+  if (needEncryption) {
+    olen = encryptECB((uint8_t*)msgBuf);
+    // encBuff = encrypted buffer
+    // hexBuff = encBuf, hex encoded
+    // olen = len(hexBuf)
+  } SerialUSB.println("olen: " + String(olen));
+  SerialUSB.print("Sending packet...");
+  // Now send a packet
+  digitalWrite(LED_BUILTIN, 1);
+  //digitalWrite(PIN_PA28, LOW);
+  digitalWrite(RFM_SWITCH, 0);
+  LoRa.beginPacket();
+  if (needEncryption) {
+    //LoRa.print((char*)hexBuf);
+    LoRa.write(hexBuf, olen);
+  } else {
+    //LoRa.print(buff);
+    LoRa.write((uint8_t *)buff, olen);
+  }
+  LoRa.endPacket();
+  digitalWrite(RFM_SWITCH, 1);
+  //digitalWrite(PIN_PA28, HIGH);
+  SerialUSB.println(" done!");
+  delay(500);
+  digitalWrite(LED_BUILTIN, 0);
+  LoRa.receive();
+  LoRa.writeRegister(REG_LNA, 0x23); // TURN ON LNA FOR RECEIVE
+}
+
 void decryptECB(uint8_t* myBuf, uint8_t olen) {
-  Serial.println(" . Decrypting:");
+  SerialUSB.println(" . Decrypting:");
   hexDump(myBuf, olen);
-  Serial.println("  - Dehexing myBuf to encBuf:");
+  SerialUSB.println("  - Dehexing myBuf to encBuf:");
   hex2array(myBuf, encBuf, olen);
   uint8_t len = olen / 2;
   hexDump(encBuf, len);
-  Serial.println("  - Decrypting encBuf:");
+  SerialUSB.println("  - Decrypting encBuf:");
   struct AES_ctx ctx;
   AES_init_ctx(&ctx, SecretKey);
   uint8_t rounds = len / 16, steps = 0;
@@ -91,6 +191,8 @@ uint16_t encryptECB(uint8_t* myBuf) {
       else olen += 16 - (olen % 16);
     }
   }
+  SerialUSB.println("myBuf:");
+  hexDump(encBuf, olen);
   SerialUSB.print("[encryptECB]: ");
   SerialUSB.print("olen = " + String(olen));
   SerialUSB.println(", len = " + String(len));
@@ -106,108 +208,32 @@ uint16_t encryptECB(uint8_t* myBuf) {
     // encrypts in place, 16 bytes at a time
   }
   array2hex(encBuf, olen, hexBuf);
-  Serial.println("encBuf:");
+  SerialUSB.println("encBuf:");
   hexDump(encBuf, olen);
-  Serial.println("hexBuf:");
+  SerialUSB.println("hexBuf:");
   hexDump(hexBuf, olen * 2);
   return (olen * 2);
 }
 
-void hexDump(uint8_t *buf, uint16_t len) {
-  String s = "|", t = "| |";
-  Serial.println(F("  |.0 .1 .2 .3 .4 .5 .6 .7 .8 .9 .a .b .c .d .e .f |"));
-  Serial.println(F("  +------------------------------------------------+ +----------------+"));
-  for (uint16_t i = 0; i < len; i += 16) {
-    for (uint8_t j = 0; j < 16; j++) {
-      if (i + j >= len) {
-        s = s + "   "; t = t + " ";
-      } else {
-        char c = buf[i + j];
-        if (c < 16) s = s + "0";
-        s = s + String(c, HEX) + " ";
-        if (c < 32 || c > 127) t = t + ".";
-        else t = t + (char)c;
-      }
-    }
-    uint8_t index = i / 16;
-    Serial.print(index, HEX); Serial.write('.');
-    Serial.println(s + t + "|");
-    s = "|"; t = "| |";
-  }
-  Serial.println(F("  +------------------------------------------------+ +----------------+\n"));
-}
-
-void setPWD(char *buff) {
-  // buff can be 32 or 64 bytes:
-  // 32 bytes = plain text
-  // 64 bytes = hex-encoded
-  uint8_t len = strlen(buff), i;
-  for (i = 0; i < len; i++) {
-    if (buff[i] < 32) {
-      buff[i] = 0;
-      i = len + 1;
-    }
-  }
-  len = strlen(buff);
-  Serial.print("setPWD: ");
-  Serial.println(buff);
-  Serial.print("len: ");
-  Serial.println(len);
-  hexDump((uint8_t *)buff, len);
-  if (len == 32) {
-    // copy to the SecretKey buffer
-    memcpy(SecretKey, buff, 32);
-    needEncryption = true;
-    hexDump((uint8_t *)SecretKey, 32);
-    return;
-  }
-  if (len == 64) {
-    // copy to the SecretKey buffer
-    hex2array((uint8_t *)buff, SecretKey, 64);
-    needEncryption = true;
-    hexDump((uint8_t *)SecretKey, 32);
-    return;
-  }
-}
-
-void sendPacket(char *buff) {
-  LoRa.idle();
-  LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
-  uint16_t olen = strlen(buff);
-  if (needEncryption) {
-    olen = encryptECB((uint8_t*)buff);
-    // encBuff = encrypted buffer
-    // hexBuff = encBuf, hex encoded
-    // olen = len(hexBuf)
-  } Serial.println("olen: " + String(olen));
-  Serial.print("Sending packet...");
-  // Now send a packet
-  digitalWrite(LED_BUILTIN, 1);
-  //digitalWrite(PIN_PA28, LOW);
-  digitalWrite(RFM_SWITCH, 0);
-  LoRa.beginPacket();
-  if (needEncryption) {
-    //LoRa.print((char*)hexBuf);
-    LoRa.write(hexBuf, olen);
-  } else {
-    //LoRa.print(buff);
-    LoRa.write((uint8_t *)buff, olen);
-  }
-  LoRa.endPacket();
-  digitalWrite(RFM_SWITCH, 1);
-  //digitalWrite(PIN_PA28, HIGH);
-  Serial.println(" done!");
-  delay(500);
-  digitalWrite(LED_BUILTIN, 0);
-  LoRa.receive();
-  LoRa.writeRegister(REG_LNA, 0x23); // TURN ON LNA FOR RECEIVE
+void stockUpRandom() {
+  fillRandom(randomStock, 256);
+  randomIndex = 0;
 }
 
 void showHelp() {
-  Serial.println("--- HELP ---");
-  Serial.println(" Sxxxxxxxxxxx: send string xxxxxxxxxxx");
-  Serial.println(" E           : turn on encryption");
-  Serial.println(" e           : turn off encryption");
-  Serial.println(" Pxxxxxxx[32]: set password [32 chars]");
-  Serial.println(" Else        : show this help");
+  SerialUSB.println("--- HELP ---");
+  SerialUSB.println(" Sxxxxxxxxxxx: send string xxxxxxxxxxx");
+  SerialUSB.println(" E           : turn on encryption");
+  SerialUSB.println(" e           : turn off encryption");
+  SerialUSB.println(" Pxxxxxxx[32]: set password [32 chars]");
+  SerialUSB.println(" R           : turn on PONG back [Reply on]");
+  SerialUSB.println(" r           : turn off PONG back [reply off]");
+  SerialUSB.println(" Else        : show this help");
+}
+
+void setPongBack(bool x) {
+  pongBack = x;
+  SerialUSB.print("PONG back set to ");
+  if (x) SerialUSB.println("true");
+  else SerialUSB.println("false");
 }
