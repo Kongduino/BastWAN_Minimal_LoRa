@@ -84,11 +84,12 @@ void loop() {
       LoRa.idle();
       SerialUSB.println("Pong back:");
       delay(1500);
-      memset(msgBuf, 0, 256);
+      char buff[32]; // [Device #02] RSSI: -38
+      memset(buff, 0, 32);
       String s = "[" + String(deviceName) + "] RSSI: " + String(LoRa.packetRssi());
-      s.toCharArray((char*)msgBuf, s.length() + 1);
-      SerialUSB.println((char*)msgBuf);
-      sendPacket((char*)msgBuf);
+      s.toCharArray(buff, s.length() + 1);
+      SerialUSB.println(buff);
+      sendPacket(buff);
       LoRa.receive();
     }
   }

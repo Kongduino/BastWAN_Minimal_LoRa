@@ -16,10 +16,10 @@
 
 uint8_t myMode = ECB;
 bool needEncryption = true;
-bool pongBack = false;
+bool pongBack = true;
 uint8_t SecretKey[33] = "YELLOW SUBMARINEENIRAMBUS WOLLEY";
 uint8_t encBuf[128], hexBuf[256], msgBuf[256];
-unsigned char randomStock[256];
+uint8_t randomStock[256];
 uint8_t randomIndex = 0;
 
 uint16_t encryptECB(uint8_t*);
@@ -31,6 +31,8 @@ void setPWD(char *);
 void setPongBack(bool);
 void stockUpRandom();
 void showHelp();
+uint8_t getRandomByte();
+void getRandomBytes(uint8_t *buff, uint8_t count);
 
 void writeRegister(uint8_t reg, uint8_t value) {
   LoRa.writeRegister(reg, value);
@@ -106,24 +108,19 @@ void sendPacket(char *buff) {
   LoRa.idle();
   LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
   uint16_t olen = strlen(buff);
-//  SerialUSB.println("Original buff:");
-//  hexDump((uint8_t *)buff, olen);
-//  memcpy(encBuf + 8, buff, olen);
+  memcpy(encBuf + 8, buff, olen);
 
   // prepend UUID
   // 4 bytes --> 8 bytes
   uint8_t ix = 0;
-  encBuf[ix++] = randomStock[randomIndex++];
-  encBuf[ix++] = randomStock[randomIndex++];
-  encBuf[ix++] = randomStock[randomIndex++];
-  encBuf[ix++] = randomStock[randomIndex++];
+  getRandomBytes(encBuf, 4);
+  //  encBuf[ix++] = getRandomByte();
+  //  encBuf[ix++] = getRandomByte();
+  //  encBuf[ix++] = getRandomByte();
+  //  encBuf[ix++] = getRandomByte();
   array2hex(encBuf, 4, hexBuf);
   memcpy(encBuf, hexBuf, 8);
-  SerialUSB.println("UUID hex-encoded:");
-  hexDump(encBuf, olen + 8);
-  ix = 8;
-  // reset random stock if needed
-  if (randomIndex > 252) stockUpRandom();
+
   olen += 8;
   SerialUSB.println("Before calling encryption. olen = " + String(olen));
   memcpy(msgBuf, encBuf, olen);
@@ -225,9 +222,11 @@ void showHelp() {
   SerialUSB.println(" Sxxxxxxxxxxx: send string xxxxxxxxxxx");
   SerialUSB.println(" E           : turn on encryption");
   SerialUSB.println(" e           : turn off encryption");
+  SerialUSB.print(" -> right now: "); SerialUSB.println(needEncryption ? "on" : "off");
   SerialUSB.println(" Pxxxxxxx[32]: set password [32 chars]");
   SerialUSB.println(" R           : turn on PONG back [Reply on]");
   SerialUSB.println(" r           : turn off PONG back [reply off]");
+  SerialUSB.print(" -> right now: "); SerialUSB.println(pongBack ? "on" : "off");
   SerialUSB.println(" Else        : show this help");
 }
 
@@ -236,4 +235,20 @@ void setPongBack(bool x) {
   SerialUSB.print("PONG back set to ");
   if (x) SerialUSB.println("true");
   else SerialUSB.println("false");
+}
+
+uint8_t getRandomByte() {
+  uint8_t r = randomStock[randomIndex++];
+  // reset random stock automatically if needed
+  if (randomIndex > 252) stockUpRandom();
+  return r;
+}
+
+void getRandomBytes(uint8_t *buff, uint8_t count) {
+  uint8_t r;
+  for (uint8_t i = 0; i < count; i++) {
+    buff[i] = randomStock[randomIndex++];
+    // reset random stock automatically if needed
+    if (randomIndex > 252) stockUpRandom();
+  }
 }
