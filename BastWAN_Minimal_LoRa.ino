@@ -4,7 +4,6 @@
 #include "aes.c"
 #include "helper.h"
 
-char deviceName[] = "Device #02";
 void setup() {
   SerialUSB.begin(11520);
   delay(2000);
@@ -48,7 +47,7 @@ void setup() {
 
 void loop() {
   // Uncomment if you have a battery plugged in.
-  //  if (millis() - batteryUpdateDelay > 5000) {
+  //  if (millis() - batteryUpdateDelay > 10000) {
   //    getBattery();
   //    batteryUpdateDelay = millis();
   //  }
@@ -72,13 +71,11 @@ void loop() {
     }
     // Print 4-byte ID
     SerialUSB.print("ID: ");
-    hex2array(msgBuf, hexBuf, 8);
-    for (uint8_t xx = 0; xx < 4; xx++) {
-      uint8_t yy = hexBuf[xx];
-      if (yy < 16) SerialUSB.write('0');
-      SerialUSB.print(yy, HEX);
-    }
-    SerialUSB.write('\n');
+    char myID[9];
+    memcpy(myID, encBuf, 8);
+    myID[8] = 0;
+    // hexDump((uint8_t*)myID, 9);
+    SerialUSB.println(myID);
     SerialUSB.println((char*)msgBuf + 8);
     SerialUSB.print("RSSI: ");
     SerialUSB.println(LoRa.packetRssi());
@@ -93,9 +90,9 @@ void loop() {
       // delay between 0.8 and 3.3 seconds
       SerialUSB.println("Delaying " + String(dl) + " millis...");
       delay(dl);
-      char buff[32]; // [Device #02] RSSI: -38
-      memset(buff, 0, 32);
-      String s = "[" + String(deviceName) + "] RSSI: " + String(LoRa.packetRssi());
+      char buff[64]; // [Device #02] RSSI: -38
+      memset(buff, 0, 64);
+      String s = "[" + String(deviceName) + "] RSSI: " + String(LoRa.packetRssi())+" [" + String(myID) + "]";
       s.toCharArray(buff, s.length() + 1);
       SerialUSB.println(buff);
       sendPacket(buff);

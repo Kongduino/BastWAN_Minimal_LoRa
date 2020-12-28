@@ -23,6 +23,7 @@ uint8_t randomStock[256];
 uint8_t randomIndex = 0;
 float lastBattery = 0.0;
 double batteryUpdateDelay;
+char deviceName[] = "Device #01";
 
 uint16_t encryptECB(uint8_t*);
 void decryptECB(uint8_t*, uint8_t);
@@ -222,6 +223,7 @@ void stockUpRandom() {
 
 void showHelp() {
   SerialUSB.println("--- HELP ---");
+  SerialUSB.print(" Device name: "); SerialUSB.println(deviceName);
   SerialUSB.println(" Sxxxxxxxxxxx: send string xxxxxxxxxxx");
   SerialUSB.println(" E           : turn on encryption");
   SerialUSB.println(" e           : turn off encryption");
@@ -239,21 +241,11 @@ void setPongBack(bool x) {
   if (x) SerialUSB.println("true");
   else SerialUSB.println("false");
 }
-
 uint8_t getRandomByte() {
   uint8_t r = randomStock[randomIndex++];
   // reset random stock automatically if needed
-  if (randomIndex > 252) stockUpRandom();
+  if (randomIndex > 254) stockUpRandom();
   return r;
-}
-
-void getRandomBytes(uint8_t *buff, uint8_t count) {
-  uint8_t r;
-  for (uint8_t i = 0; i < count; i++) {
-    buff[i] = randomStock[randomIndex++];
-    // reset random stock automatically if needed
-    if (randomIndex > 252) stockUpRandom();
-  }
 }
 
 uint16_t getRamdom16() {
@@ -263,8 +255,16 @@ uint16_t getRamdom16() {
   uint8_t r1 = randomStock[randomIndex++];
   // reset random stock automatically if needed
   if (randomIndex > 254) stockUpRandom();
-  return r0 * r1;
+  return r1 * 256 + r0;
+}
 
+void getRandomBytes(uint8_t *buff, uint8_t count) {
+  uint8_t r;
+  for (uint8_t i = 0; i < count; i++) {
+    buff[i] = randomStock[randomIndex++];
+    // reset random stock automatically if needed
+    if (randomIndex > 254) stockUpRandom();
+  }
 }
 
 void getBattery() {
