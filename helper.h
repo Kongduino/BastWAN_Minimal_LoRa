@@ -32,6 +32,7 @@ void setPongBack(bool);
 void stockUpRandom();
 void showHelp();
 uint8_t getRandomByte();
+uint16_t getRamdom16();
 void getRandomBytes(uint8_t *buff, uint8_t count);
 
 void writeRegister(uint8_t reg, uint8_t value) {
@@ -142,7 +143,6 @@ void sendPacket(char *buff) {
     //LoRa.print((char*)hexBuf);
     LoRa.write(hexBuf, olen);
   } else {
-    //LoRa.print(buff);
     LoRa.write((uint8_t *)buff, olen);
   }
   LoRa.endPacket();
@@ -251,4 +251,15 @@ void getRandomBytes(uint8_t *buff, uint8_t count) {
     // reset random stock automatically if needed
     if (randomIndex > 252) stockUpRandom();
   }
+}
+
+uint16_t getRamdom16() {
+  uint8_t r0 = randomStock[randomIndex++];
+  // reset random stock automatically if needed
+  if (randomIndex > 254) stockUpRandom();
+  uint8_t r1 = randomStock[randomIndex++];
+  // reset random stock automatically if needed
+  if (randomIndex > 254) stockUpRandom();
+  return r0 * r1;
+
 }

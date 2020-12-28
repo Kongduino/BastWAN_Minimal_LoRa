@@ -83,7 +83,11 @@ void loop() {
     if (test != 9 && pongBack) {
       LoRa.idle();
       SerialUSB.println("Pong back:");
-      delay(1500);
+      // we cannot pong back right away – the message could be lost
+      uint16_t dl = getRamdom16() % 2500 + 800;
+      // delay between 0.8 and 3.3 seconds
+      SerialUSB.println("Delaying " + String(dl) + " millis...");
+      delay(dl);
       char buff[32]; // [Device #02] RSSI: -38
       memset(buff, 0, 32);
       String s = "[" + String(deviceName) + "] RSSI: " + String(LoRa.packetRssi());
