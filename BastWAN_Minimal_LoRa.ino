@@ -47,6 +47,11 @@ void setup() {
 }
 
 void loop() {
+  // Uncomment if you have a battery plugged in.
+  //  if (millis() - batteryUpdateDelay > 5000) {
+  //    getBattery();
+  //    batteryUpdateDelay = millis();
+  //  }
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
     memset(msgBuf, 0, 256);

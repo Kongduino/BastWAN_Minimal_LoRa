@@ -21,6 +21,8 @@ uint8_t SecretKey[33] = "YELLOW SUBMARINEENIRAMBUS WOLLEY";
 uint8_t encBuf[128], hexBuf[256], msgBuf[256];
 uint8_t randomStock[256];
 uint8_t randomIndex = 0;
+float lastBattery = 0.0;
+double batteryUpdateDelay;
 
 uint16_t encryptECB(uint8_t*);
 void decryptECB(uint8_t*, uint8_t);
@@ -34,6 +36,7 @@ void showHelp();
 uint8_t getRandomByte();
 uint16_t getRamdom16();
 void getRandomBytes(uint8_t *buff, uint8_t count);
+void getBattery();
 
 void writeRegister(uint8_t reg, uint8_t value) {
   LoRa.writeRegister(reg, value);
@@ -262,4 +265,13 @@ uint16_t getRamdom16() {
   if (randomIndex > 254) stockUpRandom();
   return r0 * r1;
 
+}
+
+void getBattery() {
+  float battery = analogRead(A0);
+  if (battery != lastBattery) {
+    // update visually etc.
+    SerialUSB.println("Last Battery: " + String(lastBattery) + " vs current: " + String(battery));
+    lastBattery = battery;
+  }
 }
