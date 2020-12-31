@@ -118,8 +118,10 @@ void loop() {
     else if (c == 'r') setPongBack(false);
     else if (c == 'F') setFQ((char*)msgBuf + 1);
     else if (c == 'S') setSF((char*)msgBuf + 1);
+    else if (c == 'B') setBW((char*)msgBuf + 1);
     else if (c == 'p') sendPing();
     else {
+      SerialUSB.print("\nUnknown command: ");
       SerialUSB.println((char*)msgBuf);
       showHelp();
     }

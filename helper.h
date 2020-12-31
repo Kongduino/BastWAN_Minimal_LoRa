@@ -1,3 +1,16 @@
+#undef max
+#undef min
+#include <string>
+#include <vector>
+
+using namespace std;
+template class basic_string<char>; // https://github.com/esp8266/Arduino/issues/1136
+// Required or the code won't compile!
+namespace std _GLIBCXX_VISIBILITY(default) {
+_GLIBCXX_BEGIN_NAMESPACE_VERSION
+void __throw_bad_alloc() {}
+}
+
 #define REG_OCP 0x0B
 #define REG_PA_CONFIG 0x09
 #define REG_LNA 0x0c
@@ -24,8 +37,14 @@ uint8_t randomIndex = 0;
 float lastBattery = 0.0;
 double batteryUpdateDelay;
 char deviceName[33];
-double myFreq = 863125000;
-double mySF = 10;
+double myFreq = 868125000;
+int mySF = 10;
+uint8_t myBW = 8;
+double BWs[10] = {
+  7.8, 10.4, 15.6, 20.8, 31.25,
+  41.7, 62.5, 125.0, 250.0, 500.0
+};
+uint16_t pingCounter = 0;
 
 uint16_t encryptECB(uint8_t*);
 void decryptECB(uint8_t*, uint8_t);
@@ -42,6 +61,7 @@ void getRandomBytes(uint8_t *buff, uint8_t count);
 void getBattery();
 void setFQ(char*);
 void setSF(char*);
+void setBW(char* buff);
 void setDeviceName(char *);
 
 void writeRegister(uint8_t reg, uint8_t value) {
@@ -240,10 +260,14 @@ void showHelp() {
   SerialUSB.print(" -> right now: "); SerialUSB.println(pongBack ? "on" : "off");
   SerialUSB.println(" Fxxx.yyy    : Set a new LoRa frequency.");
   SerialUSB.print(" -> right now: "); SerialUSB.println(myFreq / 1e6, 3);
-  SerialUSB.println(" Sxx         : Set a new LoRa Spreading Factor.");
+  SerialUSB.println(" S[7-12]     : Set a new LoRa Spreading Factor.");
   SerialUSB.print(" -> right now: "); SerialUSB.println(mySF);
-  SerialUSB.println(" Else        : show this help");
+  SerialUSB.println(" B[0-9]      : Set a new LoRa Bandwidth.");
+  SerialUSB.print(" -> right now: ");
+  SerialUSB.print(mySF); SerialUSB.print(": ");
+  SerialUSB.print(BWs[myBW]); SerialUSB.println(" KHz");
   SerialUSB.println(" p           : send PING packet with counter & frequency");
+  SerialUSB.println(" Else        : show this help");
 }
 
 void setPongBack(bool x) {
@@ -316,6 +340,34 @@ void setSF(char* buff) {
     delay(100);
     LoRa.receive();
     SerialUSB.println("SF set to " + String(mySF));
+  }
+}
+
+void setBW(char* buff) {
+  int bw = atoi(buff);
+  /*Signal bandwidth:
+    0000  7.8 kHz
+    0001  10.4 kHz
+    0010  15.6 kHz
+    0011  20.8kHz
+    0100  31.25 kHz
+    0101  41.7 kHz
+    0110  62.5 kHz
+    0111  125 kHz
+    1000  250 kHz
+    1001  500 kHz
+  */
+  // clearFrame();
+  if (bw < 0 || bw > 9) {
+    SerialUSB.println("Requested BW (" + String(bw) + ") is invalid!");
+  } else {
+    String s = "BW set to: " + String(bw);
+    myBW = bw;
+    LoRa.idle();
+    LoRa.setSignalBandwidth(BWs[myBW] * 1e3);
+    delay(100);
+    LoRa.receive();
+    SerialUSB.println("BW set to " + String(BWs[myBW]));
   }
 }
 
