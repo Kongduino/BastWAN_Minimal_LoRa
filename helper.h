@@ -247,27 +247,30 @@ void stockUpRandom() {
 }
 
 void showHelp() {
-  SerialUSB.println("--- HELP ---");
-  SerialUSB.println(" Dxxxxxxxxxxx: Set device name");
-  SerialUSB.print(" -> right now: "); SerialUSB.println(deviceName);
-  SerialUSB.println(" Sxxxxxxxxxxx: send string xxxxxxxxxxx");
-  SerialUSB.println(" E           : turn on encryption");
-  SerialUSB.println(" e           : turn off encryption");
-  SerialUSB.print(" -> right now: "); SerialUSB.println(needEncryption ? "on" : "off");
-  SerialUSB.println(" Pxxxxxxx[32]: set password [32 chars]");
-  SerialUSB.println(" R           : turn on PONG back [Reply on]");
-  SerialUSB.println(" r           : turn off PONG back [reply off]");
-  SerialUSB.print(" -> right now: "); SerialUSB.println(pongBack ? "on" : "off");
-  SerialUSB.println(" Fxxx.yyy    : Set a new LoRa frequency.");
-  SerialUSB.print(" -> right now: "); SerialUSB.println(myFreq / 1e6, 3);
-  SerialUSB.println(" S[7-12]     : Set a new LoRa Spreading Factor.");
-  SerialUSB.print(" -> right now: "); SerialUSB.println(mySF);
-  SerialUSB.println(" B[0-9]      : Set a new LoRa Bandwidth.");
-  SerialUSB.print(" -> right now: ");
+  SerialUSB.print("--- HELP ---");
+  SerialUSB.println("\n D<max 32 chars> : Set device name");
+  SerialUSB.print("   -> right now  : "); SerialUSB.println(deviceName);
+  SerialUSB.println("\n >xxxxxxxxxxx    : send string xxxxxxxxxxx");
+  SerialUSB.println("\n E               : turn on encryption");
+  SerialUSB.println(" e               : turn off encryption");
+  SerialUSB.print("   -> right now  : "); SerialUSB.println(needEncryption ? "on" : "off");
+  SerialUSB.println("\n P<32 chars>     : set password [32 chars]");
+  SerialUSB.println("  [exactly 32]     (Uses AES256)");
+  SerialUSB.println("\n R               : turn on PONG back [Reply on]");
+  SerialUSB.println(" r               : turn off PONG back [reply off]");
+  SerialUSB.print("   -> right now  : "); SerialUSB.println(pongBack ? "on" : "off");
+  SerialUSB.println("\n F<float>        : Set a new LoRa frequency.");
+  SerialUSB.println("  Between 862.0 and 1020.0 MHz (HF)");
+  SerialUSB.print("   -> right now  : "); SerialUSB.println(myFreq / 1e6, 3);
+  SerialUSB.println("\n S[7-12]         : Set a new LoRa Spreading Factor.");
+  SerialUSB.print("   -> right now  : "); SerialUSB.println(mySF);
+  SerialUSB.println("\n B[0-9]          : Set a new LoRa Bandwidth.");
+  SerialUSB.println("  From 0: 7.8 KHz to 9: 500 KHz");
+  SerialUSB.print("   -> right now  : ");
   SerialUSB.print(mySF); SerialUSB.print(": ");
   SerialUSB.print(BWs[myBW]); SerialUSB.println(" KHz");
-  SerialUSB.println(" p           : send PING packet with counter & frequency");
-  SerialUSB.println(" Else        : show this help");
+  SerialUSB.println("\n p               : send PING packet with counter & frequency");
+  SerialUSB.println("\n Anything else   : show this help message.");
 }
 
 void setPongBack(bool x) {
