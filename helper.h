@@ -23,7 +23,9 @@ uint8_t randomStock[256];
 uint8_t randomIndex = 0;
 float lastBattery = 0.0;
 double batteryUpdateDelay;
-char deviceName[] = "Device #01";
+char deviceName[33];
+double myFreq = 863125000;
+double mySF = 10;
 
 uint16_t encryptECB(uint8_t*);
 void decryptECB(uint8_t*, uint8_t);
@@ -38,6 +40,9 @@ uint8_t getRandomByte();
 uint16_t getRamdom16();
 void getRandomBytes(uint8_t *buff, uint8_t count);
 void getBattery();
+void setFQ(char*);
+void setSF(char*);
+void setDeviceName(char *);
 
 void writeRegister(uint8_t reg, uint8_t value) {
   LoRa.writeRegister(reg, value);
@@ -223,7 +228,8 @@ void stockUpRandom() {
 
 void showHelp() {
   SerialUSB.println("--- HELP ---");
-  SerialUSB.print(" Device name: "); SerialUSB.println(deviceName);
+  SerialUSB.println(" Dxxxxxxxxxxx: Set device name");
+  SerialUSB.print(" -> right now: "); SerialUSB.println(deviceName);
   SerialUSB.println(" Sxxxxxxxxxxx: send string xxxxxxxxxxx");
   SerialUSB.println(" E           : turn on encryption");
   SerialUSB.println(" e           : turn off encryption");
@@ -232,7 +238,12 @@ void showHelp() {
   SerialUSB.println(" R           : turn on PONG back [Reply on]");
   SerialUSB.println(" r           : turn off PONG back [reply off]");
   SerialUSB.print(" -> right now: "); SerialUSB.println(pongBack ? "on" : "off");
+  SerialUSB.println(" Fxxx.yyy    : Set a new LoRa frequency.");
+  SerialUSB.print(" -> right now: "); SerialUSB.println(myFreq / 1e6, 3);
+  SerialUSB.println(" Sxx         : Set a new LoRa Spreading Factor.");
+  SerialUSB.print(" -> right now: "); SerialUSB.println(mySF);
   SerialUSB.println(" Else        : show this help");
+  SerialUSB.println(" p           : send PING packet with counter & frequency");
 }
 
 void setPongBack(bool x) {
@@ -274,4 +285,61 @@ void getBattery() {
     SerialUSB.println("Last Battery: " + String(lastBattery) + " vs current: " + String(battery));
     lastBattery = battery;
   }
+}
+
+void setFQ(char* buff) {
+  float fq = atof(buff);
+  // RAK4260: 862 to 1020 MHz frequency coverage
+  // clearFrame();
+  if (fq < 862.0 || fq > 1020.0) {
+    SerialUSB.println("Requested frequency (" + String(buff) + ") is invalid!");
+  } else {
+    myFreq = fq * 1e6;
+    LoRa.idle();
+    LoRa.setFrequency(myFreq);
+    delay(100);
+    LoRa.receive();
+    SerialUSB.println("Frequency set to " + String(fq, 3) + " MHz");
+  }
+}
+
+void setSF(char* buff) {
+  int sf = atoi(buff);
+  // SF 7 to 12
+  // clearFrame();
+  if (sf < 7 || sf > 12) {
+    SerialUSB.println("Requested SF (" + String(buff) + ") is invalid!");
+  } else {
+    mySF = sf;
+    LoRa.idle();
+    LoRa.setSpreadingFactor(mySF);
+    delay(100);
+    LoRa.receive();
+    SerialUSB.println("SF set to " + String(mySF));
+  }
+}
+
+void setDeviceName(char *truc) {
+  memset(deviceName, 0, 33);
+  memcpy(deviceName, truc, strlen(truc));
+  SerialUSB.print("Device Name set to: ");
+  SerialUSB.println(deviceName);
+}
+
+void sendPing() {
+  // PING!
+  string answer = "PING #";
+  answer.append(to_string(pingCounter++));
+  answer.append(" from ");
+  answer.append(deviceName);
+  answer.append(" at ");
+  string fk = to_string(myFreq);
+  answer.append(fk.substr(0, 3));
+  answer.append(".");
+  answer.append(fk.substr(3, 3));
+  answer.append(" MHz");
+  SerialUSB.println("Sending...");
+  SerialUSB.println(myFreq);
+  SerialUSB.println((char*)answer.c_str());
+  SerialUSB.println("PING sent!");
 }

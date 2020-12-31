@@ -13,7 +13,7 @@ void setup() {
   pinMode(RFM_SWITCH, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
   LoRa.setPins(SS, RFM_RST, RFM_DIO0);
-  if (!LoRa.begin(868125000)) {
+  if (!LoRa.begin(myFreq)) {
     SerialUSB.println("Starting LoRa failed!\nNow that's disappointing...");
     while (1);
   }
@@ -43,6 +43,7 @@ void setup() {
   // 11  Boost on, 150% LNA current
   LoRa.receive();
   LoRa.writeRegister(REG_LNA, 0x23); // TURN ON LNA FOR RECEIVE
+  setDeviceName("Device #03");
 }
 
 void loop() {
@@ -92,7 +93,7 @@ void loop() {
       delay(dl);
       char buff[64]; // [Device #02] RSSI: -38
       memset(buff, 0, 64);
-      String s = "[" + String(deviceName) + "] RSSI: " + String(LoRa.packetRssi())+" [" + String(myID) + "]";
+      String s = "[" + String(deviceName) + "] RSSI: " + String(LoRa.packetRssi()) + " [" + String(myID) + "]";
       s.toCharArray(buff, s.length() + 1);
       SerialUSB.println(buff);
       sendPacket(buff);
@@ -105,15 +106,19 @@ void loop() {
     while (SerialUSB.available()) {
       char c = SerialUSB.read();
       delay(10);
-      msgBuf[ix++] = c;
+      if (c > 31) msgBuf[ix++] = c;
     } msgBuf[ix] = 0;
     char c = msgBuf[0]; // Command
-    if (c == 'S') sendPacket((char*)msgBuf + 1);
+    if (c == '>') sendPacket((char*)msgBuf + 1);
+    else if (c == 'D') setDeviceName((char*)msgBuf + 1);
     else if (c == 'E') needEncryption = true;
     else if (c == 'e') needEncryption = false;
     else if (c == 'P') setPWD((char*)msgBuf + 1);
     else if (c == 'R') setPongBack(true);
     else if (c == 'r') setPongBack(false);
+    else if (c == 'F') setFQ((char*)msgBuf + 1);
+    else if (c == 'S') setSF((char*)msgBuf + 1);
+    else if (c == 'p') sendPing();
     else {
       SerialUSB.println((char*)msgBuf);
       showHelp();
