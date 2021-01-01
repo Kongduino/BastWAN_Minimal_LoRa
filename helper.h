@@ -11,6 +11,22 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 void __throw_bad_alloc() {}
 }
 
+/*
+  NOTE!
+  Add:
+  namespace std _GLIBCXX_VISIBILITY(default) {
+    _GLIBCXX_BEGIN_NAMESPACE_VERSION
+    void __throw_length_error(char const*) {
+    }
+    void __throw_out_of_range(char const*) {
+    }
+    void __throw_logic_error(char const*) {
+    }
+  }
+  to ~/Library/Arduino15/packages/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1/arm-none-eabi/include/c++/4.8.3/bits/basic_string.h
+  Or the code won't compile.
+*/
+
 #define REG_OCP 0x0B
 #define REG_PA_CONFIG 0x09
 #define REG_LNA 0x0c
