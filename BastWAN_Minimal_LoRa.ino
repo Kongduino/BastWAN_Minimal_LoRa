@@ -2,6 +2,7 @@
 #include <LoRa.h>
 #include <LoRandom.h>
 #include "aes.c"
+#include <ArduinoJson.h>
 #include "helper.h"
 
 void setup() {
@@ -53,6 +54,7 @@ void loop() {
   //    batteryUpdateDelay = millis();
   //  }
   int packetSize = LoRa.parsePacket();
+  //  if (packetSize) receiveJSONPacket();
   if (packetSize) {
     memset(msgBuf, 0, 256);
     int ix = 0;
@@ -70,33 +72,45 @@ void loop() {
       memset(msgBuf, 0, 256);
       memcpy(msgBuf, encBuf, strlen((char*)encBuf));
     }
+    StaticJsonDocument<200> doc;
+    DeserializationError error = deserializeJson(doc, msgBuf);
+    if (error) {
+      SerialUSB.print(F("deserializeJson() failed: "));
+      SerialUSB.println(error.f_str());
+      return;
+    }
     // Print 4-byte ID
+    const char *myID = doc["UUID"];
     SerialUSB.print("ID: ");
-    char myID[9];
-    memcpy(myID, encBuf, 8);
-    myID[8] = 0;
-    // hexDump((uint8_t*)myID, 9);
     SerialUSB.println(myID);
-    SerialUSB.println((char*)msgBuf + 8);
+
+    // Print sender
+    const char *from = doc["from"];
+    SerialUSB.print("Sender: ");
+    SerialUSB.println(from);
+
+    // Print sender
+    const char *msg = doc["msg"];
+    SerialUSB.print("Message: ");
+    SerialUSB.println(msg);
+
     SerialUSB.print("RSSI: ");
-    SerialUSB.println(LoRa.packetRssi());
-    // if message doesn't start with "RSSI: -" pong with RSSI
-    uint8_t test = strcmp((char*)msgBuf + 8, "RSSI: -");
-    //SerialUSB.println("test = " + String(test));
-    if (test != 9 && pongBack) {
+    int rssi = LoRa.packetRssi();
+    SerialUSB.println(rssi);
+
+    // if message doesn't start with "PONG to " pong with RSSI
+    char c[9]; memcpy(c, msg, 8); c[8] = 0;
+    uint8_t test = strcmp(c, "PONG to ");
+    SerialUSB.println("test = " + String(test));
+    SerialUSB.println((char*)msg);
+    if (test != 0 && pongBack) {
       LoRa.idle();
       SerialUSB.println("Pong back:");
       // we cannot pong back right away – the message could be lost
       uint16_t dl = getRamdom16() % 2500 + 800;
-      // delay between 0.8 and 3.3 seconds
       SerialUSB.println("Delaying " + String(dl) + " millis...");
       delay(dl);
-      char buff[64]; // [Device #02] RSSI: -38
-      memset(buff, 0, 64);
-      String s = "[" + String(deviceName) + "] RSSI: " + String(LoRa.packetRssi()) + " [" + String(myID) + "]";
-      s.toCharArray(buff, s.length() + 1);
-      SerialUSB.println(buff);
-      sendPacket(buff);
+      sendPong((char*)myID);
       LoRa.receive();
     }
   }

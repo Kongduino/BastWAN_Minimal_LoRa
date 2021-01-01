@@ -218,13 +218,13 @@ uint16_t encryptECB(uint8_t* myBuf) {
     }
   }
   SerialUSB.println("myBuf:");
-  hexDump(encBuf, olen);
   SerialUSB.print("[encryptECB]: ");
   SerialUSB.print("olen = " + String(olen));
   SerialUSB.println(", len = " + String(len));
   memset(encBuf, (olen - len), olen);
   memcpy(encBuf, myBuf, len);
   encBuf[len] = 0;
+  hexDump(encBuf, olen);
   AES_init_ctx(&ctx, (const uint8_t*)SecretKey);
   uint8_t rounds = olen / 16, steps = 0;
   for (uint8_t ix = 0; ix < rounds; ix++) {
@@ -381,14 +381,63 @@ void setDeviceName(char *truc) {
   SerialUSB.println(deviceName);
 }
 
+void sendJSONPacket(char *buff) {
+  LoRa.idle();
+  LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
+  StaticJsonDocument<256> doc;
+  memset(msgBuf,0,256);
+  char myID[9];
+  getRandomBytes(encBuf, 4);
+  array2hex(encBuf, 4, (uint8_t*)myID);
+  myID[8] = 0;
+  doc["UUID"] = myID;
+  doc["msg"] = buff;
+  doc["from"] = deviceName;
+  serializeJson(doc, (char*)msgBuf, 256);
+  uint16_t olen = strlen((char*)msgBuf);
+  hexDump(msgBuf, olen);
+  if (needEncryption) {
+    olen = encryptECB((uint8_t*)msgBuf);
+    // encBuff = encrypted buffer
+    // hexBuff = encBuf, hex encoded
+    // olen = len(hexBuf)
+  } // SerialUSB.println("olen: " + String(olen));
+  SerialUSB.print("Sending packet...");
+  // Now send a packet
+  digitalWrite(LED_BUILTIN, 1);
+  //digitalWrite(PIN_PA28, LOW);
+  digitalWrite(RFM_SWITCH, 0);
+  LoRa.beginPacket();
+  if (needEncryption) {
+    //LoRa.print((char*)hexBuf);
+    LoRa.write(hexBuf, olen);
+  } else {
+    //LoRa.print(buff);
+    LoRa.write(msgBuf, olen);
+  }
+  LoRa.endPacket();
+  /*
+    RegRssiValue (0x1B)
+    Current RSSI value (dBm)
+    RSSI[dBm] = -157 + Rssi (using HF output port) or
+    RSSI[dBm] = -164 + Rssi (using LF output port)
+    Let's see if it has any meaning
+  */
+  digitalWrite(RFM_SWITCH, 1);
+  //digitalWrite(PIN_PA28, HIGH);
+  SerialUSB.println(" done!");
+  delay(500);
+  digitalWrite(LED_BUILTIN, 0);
+  LoRa.receive();
+  LoRa.writeRegister(REG_LNA, 0x23); // TURN ON LNA FOR RECEIVE
+}
+
 void sendPing() {
   // PING!
   string answer = "PING #";
   answer.append(to_string(pingCounter++));
-  answer.append(" from ");
-  answer.append(deviceName);
   answer.append(" at ");
-  string fk = to_string(myFreq);
+  string fk = to_string(myFreq * 1000);
   answer.append(fk.substr(0, 3));
   answer.append(".");
   answer.append(fk.substr(3, 3));
@@ -396,5 +445,24 @@ void sendPing() {
   SerialUSB.println("Sending...");
   SerialUSB.println(myFreq);
   SerialUSB.println((char*)answer.c_str());
+  sendJSONPacket((char*)answer.c_str());
   SerialUSB.println("PING sent!");
+  delay(1000);
+}
+
+void sendPong(char *msgID) {
+  // PONG!
+  string answer = "PONG to #";
+  answer.append(msgID);
+  answer.append(" at ");
+  string fk = to_string(myFreq * 1000);
+  answer.append(fk.substr(0, 3));
+  answer.append(".");
+  answer.append(fk.substr(3, 3));
+  answer.append(" MHz");
+  SerialUSB.println("Sending JSON Packet... ");
+  SerialUSB.println((char*)answer.c_str());
+  sendJSONPacket((char*)answer.c_str());
+  SerialUSB.println("PONG sent!");
+  delay(1000);
 }
