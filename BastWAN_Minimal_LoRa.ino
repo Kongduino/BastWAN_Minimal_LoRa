@@ -89,21 +89,24 @@ void loop() {
     SerialUSB.print("Sender: ");
     SerialUSB.println(from);
 
-    // Print sender
-    const char *msg = doc["msg"];
-    SerialUSB.print("Message: ");
-    SerialUSB.println(msg);
+    // Print command
+    const char *cmd = doc["cmd"];
+    SerialUSB.print("Command: ");
+    SerialUSB.println(cmd);
+
+    // Do we have a message?
+    if (strcmp(cmd, "msg") == 0) {
+      const char *msg = doc["msg"];
+      SerialUSB.print("Message: ");
+      SerialUSB.println(msg);
+    }
 
     SerialUSB.print("RSSI: ");
     int rssi = LoRa.packetRssi();
     SerialUSB.println(rssi);
 
-    // if message doesn't start with "PONG to " pong with RSSI
-    char c[9]; memcpy(c, msg, 8); c[8] = 0;
-    uint8_t test = strcmp(c, "PONG to ");
-    SerialUSB.println("test = " + String(test));
-    SerialUSB.println((char*)msg);
-    if (test != 0 && pongBack) {
+    if (strcmp(cmd, "ping") == 0 && pongBack) {
+      // if it's a PING, and we are set to respond:
       LoRa.idle();
       SerialUSB.println("Pong back:");
       // we cannot pong back right away – the message could be lost
@@ -123,8 +126,12 @@ void loop() {
       if (c > 31) msgBuf[ix++] = c;
     } msgBuf[ix] = 0;
     char c = msgBuf[0]; // Command
-    if (c == '>') sendPacket((char*)msgBuf + 1);
-    else if (c == 'D') setDeviceName((char*)msgBuf + 1);
+    if (c == '>') {
+      char buff[256];
+      strcpy(buff, (char*)msgBuf + 1);
+      prepareJSONPacket(buff);
+      sendJSONPacket();
+    } else if (c == 'D') setDeviceName((char*)msgBuf + 1);
     else if (c == 'E') needEncryption = true;
     else if (c == 'e') needEncryption = false;
     else if (c == 'P') setPWD((char*)msgBuf + 1);
@@ -135,7 +142,6 @@ void loop() {
     else if (c == 'B') setBW((char*)msgBuf + 1);
     else if (c == 'p') sendPing();
     else {
-      SerialUSB.print("\nUnknown command: ");
       SerialUSB.println((char*)msgBuf);
       showHelp();
     }

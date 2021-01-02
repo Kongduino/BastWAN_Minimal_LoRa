@@ -79,6 +79,7 @@ void setFQ(char*);
 void setSF(char*);
 void setBW(char* buff);
 void setDeviceName(char *);
+void sendJSONPacket();
 
 void writeRegister(uint8_t reg, uint8_t value) {
   LoRa.writeRegister(reg, value);
@@ -397,19 +398,25 @@ void setDeviceName(char *truc) {
   SerialUSB.println(deviceName);
 }
 
-void sendJSONPacket(char *buff) {
-  LoRa.idle();
-  LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
+void prepareJSONPacket(char *buff) {
   StaticJsonDocument<256> doc;
-  memset(msgBuf,0,256);
+  memset(msgBuf, 0, 256);
   char myID[9];
   getRandomBytes(encBuf, 4);
   array2hex(encBuf, 4, (uint8_t*)myID);
   myID[8] = 0;
   doc["UUID"] = myID;
+  doc["cmd"] = "msg";
   doc["msg"] = buff;
   doc["from"] = deviceName;
   serializeJson(doc, (char*)msgBuf, 256);
+  sendJSONPacket();
+}
+
+void sendJSONPacket() {
+  SerialUSB.println("Sending JSON Packet... ");
+  LoRa.idle();
+  LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
   uint16_t olen = strlen((char*)msgBuf);
   hexDump(msgBuf, olen);
   if (needEncryption) {
@@ -450,35 +457,43 @@ void sendJSONPacket(char *buff) {
 
 void sendPing() {
   // PING!
-  string answer = "PING #";
-  answer.append(to_string(pingCounter++));
-  answer.append(" at ");
-  string fk = to_string(myFreq * 1000);
-  answer.append(fk.substr(0, 3));
-  answer.append(".");
-  answer.append(fk.substr(3, 3));
-  answer.append(" MHz");
-  SerialUSB.println("Sending...");
-  SerialUSB.println(myFreq);
-  SerialUSB.println((char*)answer.c_str());
-  sendJSONPacket((char*)answer.c_str());
+  StaticJsonDocument<256> doc;
+  char myID[9];
+  getRandomBytes(encBuf, 4);
+  array2hex(encBuf, 4, (uint8_t*)myID);
+  myID[8] = 0;
+  doc["UUID"] = myID;
+  doc["cmd"] = "ping";
+  string fq, fk = to_string(myFreq * 1000);
+  fq = fk.substr(0, 3);
+  fq.append(".");
+  fq.append(fk.substr(3, 3));
+  fq.append(" MHz");
+  doc["freq"] = fq.c_str();
+  serializeJson(doc, (char*)msgBuf, 256);
+  sendJSONPacket();
   SerialUSB.println("PING sent!");
   delay(1000);
 }
 
 void sendPong(char *msgID) {
   // PONG!
-  string answer = "PONG to #";
-  answer.append(msgID);
-  answer.append(" at ");
-  string fk = to_string(myFreq * 1000);
-  answer.append(fk.substr(0, 3));
-  answer.append(".");
-  answer.append(fk.substr(3, 3));
-  answer.append(" MHz");
-  SerialUSB.println("Sending JSON Packet... ");
-  SerialUSB.println((char*)answer.c_str());
-  sendJSONPacket((char*)answer.c_str());
+  StaticJsonDocument<256> doc;
+  char myID[9];
+  getRandomBytes(encBuf, 4);
+  array2hex(encBuf, 4, (uint8_t*)myID);
+  myID[8] = 0;
+  doc["UUID"] = myID;
+  doc["msgID"] = msgID;
+  doc["cmd"] = "pong";
+  string fq, fk = to_string(myFreq * 1000);
+  fq = fk.substr(0, 3);
+  fq.append(".");
+  fq.append(fk.substr(3, 3));
+  fq.append(" MHz");
+  doc["freq"] = fq.c_str();
+  serializeJson(doc, (char*)msgBuf, 256);
+  sendJSONPacket();
   SerialUSB.println("PONG sent!");
   delay(1000);
 }
