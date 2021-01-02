@@ -113,7 +113,7 @@ void loop() {
       uint16_t dl = getRamdom16() % 2500 + 800;
       SerialUSB.println("Delaying " + String(dl) + " millis...");
       delay(dl);
-      sendPong((char*)myID);
+      sendPong((char*)myID, rssi);
       LoRa.receive();
     }
   }

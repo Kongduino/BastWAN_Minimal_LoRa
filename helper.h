@@ -476,7 +476,7 @@ void sendPing() {
   delay(1000);
 }
 
-void sendPong(char *msgID) {
+void sendPong(char *msgID, int rssi) {
   // PONG!
   StaticJsonDocument<256> doc;
   char myID[9];
@@ -487,6 +487,7 @@ void sendPong(char *msgID) {
   doc["msgID"] = msgID;
   doc["cmd"] = "pong";
   doc["from"] = deviceName;
+  doc["rcvRSSI"] = rssi;
   string fq, fk = to_string(myFreq * 1000);
   fq = fk.substr(0, 3);
   fq.append(".");
