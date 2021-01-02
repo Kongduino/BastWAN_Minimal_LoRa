@@ -284,7 +284,7 @@ void showHelp() {
   SerialUSB.println("\n B[0-9]          : Set a new LoRa Bandwidth.");
   SerialUSB.println("  From 0: 7.8 KHz to 9: 500 KHz");
   SerialUSB.print("   -> right now  : ");
-  SerialUSB.print(mySF); SerialUSB.print(": ");
+  SerialUSB.print(myBW); SerialUSB.print(": ");
   SerialUSB.print(BWs[myBW]); SerialUSB.println(" KHz");
   SerialUSB.println("\n p               : send PING packet with counter & frequency");
   SerialUSB.println("\n Anything else   : show this help message.");
@@ -486,6 +486,7 @@ void sendPong(char *msgID) {
   doc["UUID"] = myID;
   doc["msgID"] = msgID;
   doc["cmd"] = "pong";
+  doc["from"] = deviceName;
   string fq, fk = to_string(myFreq * 1000);
   fq = fk.substr(0, 3);
   fq.append(".");
