@@ -53,7 +53,7 @@ uint8_t randomIndex = 0;
 float lastBattery = 0.0;
 double batteryUpdateDelay;
 char deviceName[33];
-double myFreq = 868125000;
+double myFreq = 863125000;
 int mySF = 10;
 uint8_t myBW = 8;
 double BWs[10] = {
@@ -332,7 +332,7 @@ void getBattery() {
 }
 
 void setFQ(char* buff) {
-  float fq = atof(buff);
+  double fq = atof(buff);
   // RAK4260: 862 to 1020 MHz frequency coverage
   // clearFrame();
   if (fq < 862.0 || fq > 1020.0) {

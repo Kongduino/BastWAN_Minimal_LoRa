@@ -6,7 +6,7 @@
 #include "helper.h"
 
 void setup() {
-  SerialUSB.begin(11520);
+  SerialUSB.begin(115200);
   delay(2000);
   SerialUSB.println("\n\nBastWAN at your service!");
   delay(1000);
@@ -44,7 +44,7 @@ void setup() {
   // 11  Boost on, 150% LNA current
   LoRa.receive();
   LoRa.writeRegister(REG_LNA, 0x23); // TURN ON LNA FOR RECEIVE
-  setDeviceName("Device #03");
+  setDeviceName("Pavel");
 }
 
 void loop() {
@@ -54,7 +54,6 @@ void loop() {
   //    batteryUpdateDelay = millis();
   //  }
   int packetSize = LoRa.parsePacket();
-  //  if (packetSize) receiveJSONPacket();
   if (packetSize) {
     memset(msgBuf, 0, 256);
     int ix = 0;
