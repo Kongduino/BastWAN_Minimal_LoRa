@@ -53,7 +53,7 @@ uint8_t randomIndex = 0;
 float lastBattery = 0.0;
 double batteryUpdateDelay;
 char deviceName[33];
-double myFreq = 863125000;
+uint32_t myFreq = 868125000;
 int mySF = 10;
 uint8_t myBW = 8;
 double BWs[10] = {
@@ -61,6 +61,9 @@ double BWs[10] = {
   41.7, 62.5, 125.0, 250.0, 500.0
 };
 uint16_t pingCounter = 0;
+uint16_t pingFrequency = 0;
+bool needPing = false;
+double lastAutoPing = 0;
 
 uint16_t encryptECB(uint8_t*);
 void decryptECB(uint8_t*, uint8_t);
@@ -80,6 +83,8 @@ void setSF(char*);
 void setBW(char* buff);
 void setDeviceName(char *);
 void sendJSONPacket();
+void savePrefs();
+void setAutoPing(char *);
 
 void writeRegister(uint8_t reg, uint8_t value) {
   LoRa.writeRegister(reg, value);
@@ -287,6 +292,8 @@ void showHelp() {
   SerialUSB.print(myBW); SerialUSB.print(": ");
   SerialUSB.print(BWs[myBW]); SerialUSB.println(" KHz");
   SerialUSB.println("\n p               : send PING packet with counter & frequency");
+  SerialUSB.println("\n /Axx            : Set auto ping to xx seconds [5-60]. 0 = OFF");
+  SerialUSB.print("   -> right now  : "); SerialUSB.println(pongBack ? "on @ " + String(pingFrequency) : "off");
   SerialUSB.println("\n Anything else   : show this help message.");
 }
 
@@ -332,18 +339,19 @@ void getBattery() {
 }
 
 void setFQ(char* buff) {
-  double fq = atof(buff);
+  uint32_t fq = (uint32_t)(atof(buff) * 1e6);
   // RAK4260: 862 to 1020 MHz frequency coverage
   // clearFrame();
-  if (fq < 862.0 || fq > 1020.0) {
+  if (fq < 862e6 || fq > 1020e6) {
     SerialUSB.println("Requested frequency (" + String(buff) + ") is invalid!");
   } else {
-    myFreq = fq * 1e6;
+    myFreq = fq;
     LoRa.idle();
     LoRa.setFrequency(myFreq);
     delay(100);
     LoRa.receive();
-    SerialUSB.println("Frequency set to " + String(fq, 3) + " MHz");
+    SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
+    savePrefs();
   }
 }
 
@@ -360,6 +368,7 @@ void setSF(char* buff) {
     delay(100);
     LoRa.receive();
     SerialUSB.println("SF set to " + String(mySF));
+    savePrefs();
   }
 }
 
@@ -388,6 +397,7 @@ void setBW(char* buff) {
     delay(100);
     LoRa.receive();
     SerialUSB.println("BW set to " + String(BWs[myBW]));
+    savePrefs();
   }
 }
 
@@ -396,6 +406,7 @@ void setDeviceName(char *truc) {
   memcpy(deviceName, truc, strlen(truc));
   SerialUSB.print("Device Name set to: ");
   SerialUSB.println(deviceName);
+  savePrefs();
 }
 
 void prepareJSONPacket(char *buff) {
@@ -498,4 +509,41 @@ void sendPong(char *msgID, int rssi) {
   sendJSONPacket();
   SerialUSB.println("PONG sent!");
   delay(1000);
+}
+
+void savePrefs() {
+  //  SerialUSB.println("Saving prefs:");
+  //  StaticJsonDocument<200> doc;
+  //  doc["myFreq"] = myFreq;
+  //  doc["mySF"] = mySF;
+  //  doc["myBW"] = myBW;
+  //  doc["deviceName"] = deviceName;
+  //  memset(msgBuf, 0, 97);
+  //  serializeJson(doc, (char*)msgBuf, 97);
+  //  hexDump(msgBuf, 96);
+  //  myMem.write(0, msgBuf, 32);
+  //  myMem.write(32, msgBuf + 32, 32);
+  //  myMem.write(64, msgBuf + 64, 32);
+}
+
+void setAutoPing(char* buff) {
+  uint16_t fq = (uint16_t)(atof(buff) * 1e3);
+  SerialUSB.print("PING frequency: ");
+  SerialUSB.print(buff);
+  SerialUSB.print(" --> ");
+  SerialUSB.println(fq);
+  if (fq == 0) {
+    SerialUSB.println("Turning auto PING off!");
+    needPing = false;
+    return;
+  }
+  if (fq < 5000 || fq > 60000) {
+    SerialUSB.println("Invalid frequency!");
+    return;
+  }
+  SerialUSB.print("Turning auto PING on, every ");
+  SerialUSB.print((uint16_t)fq / 1e3);
+  SerialUSB.println(" seconds.");
+  pingFrequency = fq;
+  needPing = true;
 }
