@@ -15,7 +15,7 @@ uint8_t readRegister(uint8_t reg) {
 }
 ```
 
-These 2 functions are used by `LoRandom.h`. Note that technically you shouldn't need `LoRandom.h`, because it has been integrated into LoRa.h – but I have kept working on it and it may have deviated a bit from the original. As it is now, I am including it, to stay on the safe side. Plus, if you want to use another LoRa-related library, YOU WILL NEED IT.
+These 2 functions are used by `LoRandom.h`. Note that technically you shouldn't need `LoRandom.h`, because it has been integrated into LoRa.h – but I have kept working on it and it may have deviated a bit from the original. As it is now, I am including it, to stay on the safe side. Plus, if you want to use another LoRa-related library, YOU WILL NEED IT. Also, see the note below about `LoRa.h`.
 
 This example shows how to deal with random numbers. The code first builds a "stock" of 256 random `uint8_t`. Two functions are provided (although I only use one for now):
 
@@ -52,5 +52,42 @@ There is an optional PONG back function – which I use to do distance tests. I 
 Problems start to crop up when you have several devices listening and ponging back – then some PONGs may be lost, and even if not, only the last one will be shown, as the previous ones will be erased. I plan to remedy to this by creating a message queue, which will store the messages, and in the incoming window, will show a list from which you can choose which message to display. TODO!
 
 The hex-encoded string below the pongback is the original pongback message, displayed for debug purposes. It'll go the way of the dodo soon.
+
+# IMPORTANT
+
+## LoRa library
+
+I am using a customized version of the LoRa library. The change is easy to do but has to be done every time you upgrade it:
+
+```c
+  uint8_t readRegister(uint8_t address);
+  void writeRegister(uint8_t address, uint8_t value);
+```
+
+The declarations of these 2 functions are private, and need to be moved to public. The code needs access to these functions. And honestly there's no good reason for these 2 functions to be private...
+
+## basic_string.h
+
+It is missing some C++ functions, so you need to add the following code to `basic_string.h`, which should be located somewhere like:
+
+    ~/Library/Arduino15/packages/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1/arm-none-eabi/include/c++/4.8.3/bits/basic_string.h
+
+Version number may vary.
+
+Code:
+
+```c
+  namespace std _GLIBCXX_VISIBILITY(default) {
+    _GLIBCXX_BEGIN_NAMESPACE_VERSION
+    void __throw_length_error(char const*) {
+    }
+    void __throw_out_of_range(char const*) {
+    }
+    void __throw_logic_error(char const*) {
+    }
+  }
+```
+
+Once this is done, you should be able to compile the code without problems.
 
 ![PongBack](PongBack.jpg)
