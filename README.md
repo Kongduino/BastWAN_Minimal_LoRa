@@ -88,6 +88,16 @@ Code:
   }
 ```
 
+## SparkFun_External_EEPROM.h
+
+You need to define the buffer lengths in `SparkFun_External_EEPROM.h`. BastWAN isn't recognized. Around line 56:
+
+```c
+#elif defined(_VARIANT_ELECTRONICCATS_BASTWAN_)
+#define I2C_BUFFER_LENGTH_RX SERIAL_BUFFER_SIZE
+#define I2C_BUFFER_LENGTH_TX SERIAL_BUFFER_SIZE
+```
+
 Once this is done, you should be able to compile the code without problems.
 
 ![PongBack](PongBack.jpg)

@@ -4,6 +4,13 @@
 #include "aes.c"
 #include "SparkFun_External_EEPROM.h"
 // Click here to get the library: http://librarymanager/All#SparkFun_External_EEPROM
+/*
+You need to define the buffer lengths in SparkFun_External_EEPROM.h
+Around line 56:
+#elif defined(_VARIANT_ELECTRONICCATS_BASTWAN_)
+#define I2C_BUFFER_LENGTH_RX SERIAL_BUFFER_SIZE
+#define I2C_BUFFER_LENGTH_TX SERIAL_BUFFER_SIZE
+*/
 #include "ArduinoJson.h"
 // Click here to get the library: http://librarymanager/All#ArduinoJson
 
