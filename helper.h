@@ -22,6 +22,8 @@ void __throw_bad_alloc() {}
     }
     void __throw_logic_error(char const*) {
     }
+    void __throw_out_of_range_fmt(char const*, ...) {
+    }
   }
   to ~/Library/Arduino15/packages/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1/arm-none-eabi/include/c++/4.8.3/bits/basic_string.h
   Or the code won't compile.
@@ -475,12 +477,9 @@ void sendPing() {
   myID[8] = 0;
   doc["UUID"] = myID;
   doc["cmd"] = "ping";
-  string fq, fk = to_string(myFreq * 1000);
-  fq = fk.substr(0, 3);
-  fq.append(".");
-  fq.append(fk.substr(3, 3));
-  fq.append(" MHz");
-  doc["freq"] = fq.c_str();
+  char freq[8];
+  snprintf( freq, 8, "%f", float(myFreq / 1e6) );
+  doc["freq"] = freq;
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
   SerialUSB.println("PING sent!");
@@ -499,12 +498,9 @@ void sendPong(char *msgID, int rssi) {
   doc["cmd"] = "pong";
   doc["from"] = deviceName;
   doc["rcvRSSI"] = rssi;
-  string fq, fk = to_string(myFreq * 1000);
-  fq = fk.substr(0, 3);
-  fq.append(".");
-  fq.append(fk.substr(3, 3));
-  fq.append(" MHz");
-  doc["freq"] = fq.c_str();
+  char freq[8];
+  snprintf( freq, 8, "%f", float(myFreq / 1e6) );
+  doc["freq"] = freq;
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
   SerialUSB.println("PONG sent!");
