@@ -8,7 +8,7 @@ template class basic_string<char>; // https://github.com/esp8266/Arduino/issues/
 // Required or the code won't compile!
 namespace std _GLIBCXX_VISIBILITY(default) {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
-void __throw_bad_alloc() {}
+//void __throw_bad_alloc() {}
 }
 
 /*
@@ -430,6 +430,7 @@ void sendJSONPacket() {
   SerialUSB.println("Sending JSON Packet... ");
   LoRa.idle();
   LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
+  digitalWrite(RFM_SWITCH, LOW);
   uint16_t olen = strlen((char*)msgBuf);
   hexDump(msgBuf, olen);
   if (needEncryption) {
@@ -459,7 +460,7 @@ void sendJSONPacket() {
     RSSI[dBm] = -164 + Rssi (using LF output port)
     Let's see if it has any meaning
   */
-  digitalWrite(RFM_SWITCH, 1);
+  digitalWrite(RFM_SWITCH, HIGH);
   //digitalWrite(PIN_PA28, HIGH);
   SerialUSB.println(" done!");
   delay(500);

@@ -41,6 +41,15 @@ The first one gives you one randome byte, as expected. The second stores `count`
 
 The AES encryption / decryption code is the original [Rijndael implementation](http://efgh.com/software/rijndael.htm), and is provided in the sketch. There are better implementations, but it works, and is simple enough to read. Although, with crypto, simple is always debatable!
 
+Transmission has been improved by surround the LoRa send code with:
+
+```c
+  digitalWrite(RFM_SWITCH, LOW);
+  [...]
+  digitalWrite(RFM_SWITCH, HIGH);
+
+```
+
 ![Test](LoRaTest.png)
 
 There are a few commands to be used in the Serial Monitor (or another Terminal):
@@ -70,21 +79,21 @@ The declarations of these 2 functions are private, and need to be moved to publi
 
 It is missing some C++ functions, so you need to add the following code to `basic_string.h`, which should be located somewhere like:
 
-    ~/Library/Arduino15/packages/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1/arm-none-eabi/include/c++/4.8.3/bits/basic_string.h
+    ~/Library/Arduino15/packages/arduino/tools/arm-none-eabi-gcc/<VERSION>/arm-none-eabi/include/c++/<VERSION>/bits/basic_string.h
 
-Version number may vary.
+Version number may vary. There may be several version together... I really wish these frameworks were unified and we didin't need to have identical copies all over the place...
+
+![Versions](Versions.png)
 
 Code:
 
 ```c
   namespace std _GLIBCXX_VISIBILITY(default) {
     _GLIBCXX_BEGIN_NAMESPACE_VERSION
-    void __throw_length_error(char const*) {
-    }
-    void __throw_out_of_range(char const*) {
-    }
-    void __throw_logic_error(char const*) {
-    }
+    void __throw_length_error(char const*) {}
+    void __throw_bad_alloc() {}
+    void __throw_out_of_range(char const*) {}
+    void __throw_logic_error(char const*) {}
   }
 ```
 

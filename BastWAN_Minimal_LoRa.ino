@@ -5,6 +5,24 @@
 #include "SparkFun_External_EEPROM.h"
 // Click here to get the library: http://librarymanager/All#SparkFun_External_EEPROM
 /*
+  NOTE!
+  Add:
+  namespace std _GLIBCXX_VISIBILITY(default) {
+    _GLIBCXX_BEGIN_NAMESPACE_VERSION
+    void __throw_length_error(char const*) {}
+    void __throw_bad_alloc() {}
+    void __throw_out_of_range(char const*) {}
+    void __throw_logic_error(char const*) {}
+  }
+  to ~/Library/Arduino15/packages/arduino/tools/arm-none-eabi-gcc/4.8.3-2014q1/arm-none-eabi/include/c++/4.8.3/bits/basic_string.h
+
+  Add:
+   -D_GLIBCXX_USE_C99
+  to compiler.c.flags & compiler.cpp.flags.
+  Or the code won't compile.
+*/
+
+/*
 You need to define the buffer lengths in SparkFun_External_EEPROM.h
 Around line 56:
 #elif defined(_VARIANT_ELECTRONICCATS_BASTWAN_)
