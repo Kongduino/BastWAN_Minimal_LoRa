@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+uint8_t NEED_DEBUG = 0;
+
 using namespace std;
 template class basic_string<char>; // https://github.com/esp8266/Arduino/issues/1136
 // Required or the code won't compile!
@@ -66,6 +68,8 @@ uint16_t pingCounter = 0;
 uint16_t pingFrequency = 0;
 bool needPing = false;
 double lastAutoPing = 0;
+float homeLatitude = 22.4591126;
+float homeLongitude = 114.0003769;
 
 uint16_t encryptECB(uint8_t*);
 void decryptECB(uint8_t*, uint8_t);
@@ -137,23 +141,29 @@ void setPWD(char *buff) {
     }
   }
   len = strlen(buff);
-  SerialUSB.print("setPWD: ");
-  SerialUSB.println(buff);
-  SerialUSB.print("len: ");
-  SerialUSB.println(len);
-  hexDump((uint8_t *)buff, len);
+  if (NEED_DEBUG == 1) {
+    SerialUSB.print("setPWD: ");
+    SerialUSB.println(buff);
+    SerialUSB.print("len: ");
+    SerialUSB.println(len);
+    hexDump((uint8_t *)buff, len);
+  }
   if (len == 32) {
     // copy to the SecretKey buffer
     memcpy(SecretKey, buff, 32);
     needEncryption = true;
-    hexDump((uint8_t *)SecretKey, 32);
+    if (NEED_DEBUG == 1) {
+      hexDump((uint8_t *)SecretKey, 32);
+    }
     return;
   }
   if (len == 64) {
     // copy to the SecretKey buffer
     hex2array((uint8_t *)buff, SecretKey, 64);
     needEncryption = true;
-    hexDump((uint8_t *)SecretKey, 32);
+    if (NEED_DEBUG == 1) {
+      hexDump((uint8_t *)SecretKey, 32);
+    }
     return;
   }
 }
@@ -163,7 +173,6 @@ void sendPacket(char *buff) {
   LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
   uint16_t olen = strlen(buff);
   memcpy(encBuf + 8, buff, olen);
-
   // prepend UUID
   // 4 bytes --> 8 bytes
   uint8_t ix = 0;
@@ -174,19 +183,24 @@ void sendPacket(char *buff) {
   //  encBuf[ix++] = getRandomByte();
   array2hex(encBuf, 4, hexBuf);
   memcpy(encBuf, hexBuf, 8);
-
   olen += 8;
-  SerialUSB.println("Before calling encryption. olen = " + String(olen));
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println("Before calling encryption. olen = " + String(olen));
+  }
   memcpy(msgBuf, encBuf, olen);
-  hexDump(msgBuf, olen);
-
+  if (NEED_DEBUG == 1) {
+    hexDump(msgBuf, olen);
+  }
   if (needEncryption) {
     olen = encryptECB((uint8_t*)msgBuf);
     // encBuff = encrypted buffer
     // hexBuff = encBuf, hex encoded
     // olen = len(hexBuf)
-  } SerialUSB.println("olen: " + String(olen));
-  SerialUSB.print("Sending packet...");
+  }
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println("olen: " + String(olen));
+    SerialUSB.print("Sending packet...");
+  }
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
   //digitalWrite(PIN_PA28, LOW);
@@ -201,7 +215,9 @@ void sendPacket(char *buff) {
   LoRa.endPacket();
   digitalWrite(RFM_SWITCH, 1);
   //digitalWrite(PIN_PA28, HIGH);
-  SerialUSB.println(" done!");
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println(" done!");
+  }
   delay(500);
   digitalWrite(LED_BUILTIN, 0);
   LoRa.receive();
@@ -209,13 +225,17 @@ void sendPacket(char *buff) {
 }
 
 void decryptECB(uint8_t* myBuf, uint8_t olen) {
-  SerialUSB.println(" . Decrypting:");
-  hexDump(myBuf, olen);
-  SerialUSB.println("  - Dehexing myBuf to encBuf:");
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println(" . Decrypting:");
+    hexDump(myBuf, olen);
+    SerialUSB.println("  - Dehexing myBuf to encBuf:");
+  }
   hex2array(myBuf, encBuf, olen);
   uint8_t len = olen / 2;
-  hexDump(encBuf, len);
-  SerialUSB.println("  - Decrypting encBuf:");
+  if (NEED_DEBUG == 1) {
+    hexDump(encBuf, len);
+    SerialUSB.println("  - Decrypting encBuf:");
+  }
   struct AES_ctx ctx;
   AES_init_ctx(&ctx, SecretKey);
   uint8_t rounds = len / 16, steps = 0;
@@ -225,7 +245,9 @@ void decryptECB(uint8_t* myBuf, uint8_t olen) {
     steps += 16;
     // encrypts in place, 16 bytes at a time
   } encBuf[steps] = 0;
-  hexDump(encBuf, len);
+  if (NEED_DEBUG == 1) {
+    hexDump(encBuf, len);
+  }
 }
 
 uint16_t encryptECB(uint8_t* myBuf) {
@@ -241,14 +263,18 @@ uint16_t encryptECB(uint8_t* myBuf) {
       else olen += 16 - (olen % 16);
     }
   }
-  SerialUSB.println("myBuf:");
-  SerialUSB.print("[encryptECB]: ");
-  SerialUSB.print("olen = " + String(olen));
-  SerialUSB.println(", len = " + String(len));
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println("myBuf:");
+    SerialUSB.print("[encryptECB]: ");
+    SerialUSB.print("olen = " + String(olen));
+    SerialUSB.println(", len = " + String(len));
+  }
   memset(encBuf, (olen - len), olen);
   memcpy(encBuf, myBuf, len);
   encBuf[len] = 0;
-  hexDump(encBuf, olen);
+  if (NEED_DEBUG == 1) {
+    hexDump(encBuf, olen);
+  }
   AES_init_ctx(&ctx, (const uint8_t*)SecretKey);
   uint8_t rounds = olen / 16, steps = 0;
   for (uint8_t ix = 0; ix < rounds; ix++) {
@@ -258,10 +284,12 @@ uint16_t encryptECB(uint8_t* myBuf) {
     // encrypts in place, 16 bytes at a time
   }
   array2hex(encBuf, olen, hexBuf);
-  SerialUSB.println("encBuf:");
-  hexDump(encBuf, olen);
-  SerialUSB.println("hexBuf:");
-  hexDump(hexBuf, olen * 2);
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println("encBuf:");
+    hexDump(encBuf, olen);
+    SerialUSB.println("hexBuf:");
+    hexDump(hexBuf, olen * 2);
+  }
   return (olen * 2);
 }
 
@@ -296,15 +324,21 @@ void showHelp() {
   SerialUSB.println("\n p               : send PING packet with counter & frequency");
   SerialUSB.println("\n /Axx            : Set auto ping to xx seconds [5-60]. 0 = OFF");
   SerialUSB.print("   -> right now  : "); SerialUSB.println(pongBack ? "on @ " + String(pingFrequency) : "off");
+  SerialUSB.println("\n /D              : Switch DEBUG on/off");
+  SerialUSB.print("   -> right now  : "); SerialUSB.println(NEED_DEBUG == 1 ? "ON" : "OFF");
+  SerialUSB.println("\n /H              : Show this help even if DEBUG is off");
   SerialUSB.println("\n Anything else   : show this help message.");
 }
 
 void setPongBack(bool x) {
   pongBack = x;
-  SerialUSB.print("PONG back set to ");
-  if (x) SerialUSB.println("true");
-  else SerialUSB.println("false");
+  if (NEED_DEBUG == 1) {
+    SerialUSB.print("PONG back set to ");
+    if (x) SerialUSB.println("true");
+    else SerialUSB.println("false");
+  }
 }
+
 uint8_t getRandomByte() {
   uint8_t r = randomStock[randomIndex++];
   // reset random stock automatically if needed
@@ -335,7 +369,9 @@ void getBattery() {
   float battery = analogRead(A0);
   if (battery != lastBattery) {
     // update visually etc.
-    SerialUSB.println("Last Battery: " + String(lastBattery) + " vs current: " + String(battery));
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("Last Battery: " + String(lastBattery) + " vs current: " + String(battery));
+    }
     lastBattery = battery;
   }
 }
@@ -345,14 +381,18 @@ void setFQ(char* buff) {
   // RAK4260: 862 to 1020 MHz frequency coverage
   // clearFrame();
   if (fq < 862e6 || fq > 1020e6) {
-    SerialUSB.println("Requested frequency (" + String(buff) + ") is invalid!");
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("Requested frequency (" + String(buff) + ") is invalid!");
+    }
   } else {
     myFreq = fq;
     LoRa.idle();
     LoRa.setFrequency(myFreq);
     delay(100);
     LoRa.receive();
-    SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
+    }
     savePrefs();
   }
 }
@@ -362,14 +402,18 @@ void setSF(char* buff) {
   // SF 7 to 12
   // clearFrame();
   if (sf < 7 || sf > 12) {
-    SerialUSB.println("Requested SF (" + String(buff) + ") is invalid!");
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("Requested SF (" + String(buff) + ") is invalid!");
+    }
   } else {
     mySF = sf;
     LoRa.idle();
     LoRa.setSpreadingFactor(mySF);
     delay(100);
     LoRa.receive();
-    SerialUSB.println("SF set to " + String(mySF));
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("SF set to " + String(mySF));
+    }
     savePrefs();
   }
 }
@@ -390,7 +434,9 @@ void setBW(char* buff) {
   */
   // clearFrame();
   if (bw < 0 || bw > 9) {
-    SerialUSB.println("Requested BW (" + String(bw) + ") is invalid!");
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("Requested BW (" + String(bw) + ") is invalid!");
+    }
   } else {
     String s = "BW set to: " + String(bw);
     myBW = bw;
@@ -398,7 +444,9 @@ void setBW(char* buff) {
     LoRa.setSignalBandwidth(BWs[myBW] * 1e3);
     delay(100);
     LoRa.receive();
-    SerialUSB.println("BW set to " + String(BWs[myBW]));
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("BW set to " + String(BWs[myBW]));
+    }
     savePrefs();
   }
 }
@@ -406,8 +454,10 @@ void setBW(char* buff) {
 void setDeviceName(char *truc) {
   memset(deviceName, 0, 33);
   memcpy(deviceName, truc, strlen(truc));
-  SerialUSB.print("Device Name set to: ");
-  SerialUSB.println(deviceName);
+  if (NEED_DEBUG == 1) {
+    SerialUSB.print("Device Name set to: ");
+    SerialUSB.println(deviceName);
+  }
   savePrefs();
 }
 
@@ -427,19 +477,25 @@ void prepareJSONPacket(char *buff) {
 }
 
 void sendJSONPacket() {
-  SerialUSB.println("Sending JSON Packet... ");
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println("Sending JSON Packet... ");
+  }
   LoRa.idle();
   LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
   digitalWrite(RFM_SWITCH, LOW);
   uint16_t olen = strlen((char*)msgBuf);
-  hexDump(msgBuf, olen);
+  if (NEED_DEBUG == 1) {
+    hexDump(msgBuf, olen);
+  }
   if (needEncryption) {
     olen = encryptECB((uint8_t*)msgBuf);
     // encBuff = encrypted buffer
     // hexBuff = encBuf, hex encoded
     // olen = len(hexBuf)
   } // SerialUSB.println("olen: " + String(olen));
-  SerialUSB.print("Sending packet...");
+  if (NEED_DEBUG == 1) {
+    SerialUSB.print("Sending packet...");
+  }
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
   //digitalWrite(PIN_PA28, LOW);
@@ -462,7 +518,9 @@ void sendJSONPacket() {
   */
   digitalWrite(RFM_SWITCH, HIGH);
   //digitalWrite(PIN_PA28, HIGH);
-  SerialUSB.println(" done!");
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println(" done!");
+  }
   delay(500);
   digitalWrite(LED_BUILTIN, 0);
   LoRa.receive();
@@ -481,9 +539,16 @@ void sendPing() {
   char freq[8];
   snprintf( freq, 8, "%f", float(myFreq / 1e6) );
   doc["freq"] = freq;
+
+  // Lat/Long are hard-coded for the moment
+  doc["lat"] = homeLatitude;
+  doc["long"] = homeLongitude;
+
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
-  SerialUSB.println("PING sent!");
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println("PING sent!");
+  }
   delay(1000);
 }
 
@@ -504,7 +569,9 @@ void sendPong(char *msgID, int rssi) {
   doc["freq"] = freq;
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
-  SerialUSB.println("PONG sent!");
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println("PONG sent!");
+  }
   delay(1000);
 }
 
@@ -525,22 +592,30 @@ void savePrefs() {
 
 void setAutoPing(char* buff) {
   uint16_t fq = (uint16_t)(atof(buff) * 1e3);
-  SerialUSB.print("PING frequency: ");
-  SerialUSB.print(buff);
-  SerialUSB.print(" --> ");
-  SerialUSB.println(fq);
+  if (NEED_DEBUG == 1) {
+    SerialUSB.print("PING frequency: ");
+    SerialUSB.print(buff);
+    SerialUSB.print(" --> ");
+    SerialUSB.println(fq);
+  }
   if (fq == 0) {
-    SerialUSB.println("Turning auto PING off!");
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("Turning auto PING off!");
+    }
     needPing = false;
     return;
   }
   if (fq < 5000 || fq > 60000) {
-    SerialUSB.println("Invalid frequency!");
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("Invalid frequency!");
+    }
     return;
   }
-  SerialUSB.print("Turning auto PING on, every ");
-  SerialUSB.print((uint16_t)fq / 1e3);
-  SerialUSB.println(" seconds.");
+  if (NEED_DEBUG == 1) {
+    SerialUSB.print("Turning auto PING on, every ");
+    SerialUSB.print((uint16_t)fq / 1e3);
+    SerialUSB.println(" seconds.");
+  }
   pingFrequency = fq;
   needPing = true;
 }
