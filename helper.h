@@ -418,7 +418,7 @@ void setSF(char* buff) {
   }
 }
 
-void setBW(char* buff) {
+void s(char* buff) {
   int bw = atoi(buff);
   /*Signal bandwidth:
     0000  7.8 kHz
