@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-uint8_t NEED_DEBUG = 0;
+uint8_t NEED_DEBUG = 1;
 
 using namespace std;
 template class basic_string<char>; // https://github.com/esp8266/Arduino/issues/1136
@@ -60,6 +60,7 @@ char deviceName[33];
 uint32_t myFreq = 868125000;
 int mySF = 10;
 uint8_t myBW = 8;
+uint8_t myCR = 5;
 double BWs[10] = {
   7.8, 10.4, 15.6, 20.8, 31.25,
   41.7, 62.5, 125.0, 250.0, 500.0
@@ -70,6 +71,7 @@ bool needPing = false;
 double lastAutoPing = 0;
 float homeLatitude = 22.4591126;
 float homeLongitude = 114.0003769;
+uint8_t TxPower = 20;
 
 uint16_t encryptECB(uint8_t*);
 void decryptECB(uint8_t*, uint8_t);
@@ -86,7 +88,9 @@ void getRandomBytes(uint8_t *buff, uint8_t count);
 void getBattery();
 void setFQ(char*);
 void setSF(char*);
+void setTxPower(char* buff);
 void setBW(char* buff);
+void setCR(char* buff);
 void setDeviceName(char *);
 void sendJSONPacket();
 void savePrefs();
@@ -413,6 +417,46 @@ void setSF(char* buff) {
     LoRa.receive();
     if (NEED_DEBUG == 1) {
       SerialUSB.println("SF set to " + String(mySF));
+    }
+    savePrefs();
+  }
+}
+
+void setTxPower(char* buff) {
+  int txp = atoi(buff);
+  if (txp < 7 || txp > 23) {
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("Requested TxPower (" + String(txp) + ") is invalid!");
+    }
+  } else {
+    String s = "TxPower set to: " + String(txp);
+    TxPower = txp;
+    LoRa.idle();
+    LoRa.setTxPower(TxPower);
+    delay(100);
+    LoRa.receive();
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("TxPower set to " + String(TxPower));
+    }
+  }
+}
+
+void setCR(char* buff) {
+  int cr = atoi(buff);
+  // clearFrame();
+  if (cr < 5 || cr > 8) {
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("Requested C/R (" + String(cr) + ") is invalid!");
+    }
+  } else {
+    String s = "C/R set to: " + String(cr);
+    myCR = cr;
+    LoRa.idle();
+    LoRa.setCodingRate4(cr);
+    delay(100);
+    LoRa.receive();
+    if (NEED_DEBUG == 1) {
+      SerialUSB.println("C/R set to " + String(cr));
     }
     savePrefs();
   }

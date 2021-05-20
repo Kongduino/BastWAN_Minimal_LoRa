@@ -82,16 +82,16 @@ void setup() {
   }
   if (myMem.begin() == false) {
     if (NEED_DEBUG == 1) {
-      Serial.println("   No memory detected. Freezing.");
+      SerialUSB.println("   No memory detected. Freezing.");
     }
     while (1)
       ;
   }
   uint32_t myLen = myMem.length(), index = 0;
   if (NEED_DEBUG == 1) {
-    Serial.println("Memory detected!");
-    Serial.print("Mem size in bytes: ");
-    Serial.println(myLen);
+    SerialUSB.println("Memory detected!");
+    SerialUSB.print("Mem size in bytes: ");
+    SerialUSB.println(myLen);
   }
   memset(msgBuf, 0, 97);
   myMem.read(0, msgBuf, 32);
@@ -112,13 +112,14 @@ void setup() {
   myFreq = doc["myFreq"];
   mySF = doc["mySF"] = mySF;
   myBW = doc["myBW"];
+  myCR = doc["myCR"];
   const char *x = doc["deviceName"];
   memcpy(deviceName, x, 33);
   if (NEED_DEBUG == 1) {
-    SerialUSB.print("FQ: "); Serial.println(myFreq / 1e6);
-    SerialUSB.print("SF: "); Serial.println(mySF);
-    SerialUSB.print("BW: "); Serial.println(myBW);
-    Serial.print("Device Name: "); Serial.println(deviceName);
+    SerialUSB.print("FQ: "); SerialUSB.println(myFreq / 1e6);
+    SerialUSB.print("SF: "); SerialUSB.println(mySF);
+    SerialUSB.print("BW: "); SerialUSB.println(myBW);
+    SerialUSB.print("Device Name: "); SerialUSB.println(deviceName);
   }
 #endif
 
@@ -150,11 +151,11 @@ void setup() {
   }
   stockUpRandom();
   // first fill a 256-byte array with random bytes
-  LoRa.setSpreadingFactor(10);
-  LoRa.setSignalBandwidth(250e3);
-  LoRa.setCodingRate4(5);
+  LoRa.setSpreadingFactor(mySF);
+  LoRa.setSignalBandwidth(BWs[myBW]*1e3);
+  LoRa.setCodingRate4(myCR);
   LoRa.setPreambleLength(8);
-  LoRa.setTxPower(20, PA_OUTPUT_PA_BOOST_PIN);
+  LoRa.setTxPower(TxPower, PA_OUTPUT_PA_BOOST_PIN);
   digitalWrite(RFM_SWITCH, HIGH);
   LoRa.writeRegister(REG_PA_CONFIG, 0b11111111); // That's for the transceiver
   // 0B 1111 1111
@@ -330,6 +331,7 @@ void loop() {
     else if (c == 'F') setFQ((char*)msgBuf + 1);
     else if (c == 'S') setSF((char*)msgBuf + 1);
     else if (c == 'B') setBW((char*)msgBuf + 1);
+    else if (c == 'C') setCR((char*)msgBuf + 1);
     else if (c == 'p') sendPing();
     else if (c == '/') {
       // "special" commands
@@ -344,6 +346,11 @@ void loop() {
       if (c == 'A') {
         // Auto Ping
         setAutoPing((char*)msgBuf + 2);
+        return;
+      }
+      if (c == 'P') {
+        // TxPower
+        setTxPower((char*)msgBuf + 2);
         return;
       }
       if (c == 'D') {
