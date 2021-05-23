@@ -1,3 +1,9 @@
+// Uncomment the next line if uploading to Pavel
+//#define Pavel 1
+
+// Uncomment this next line if you want to use a DHT22
+//#define NEED_DHT
+
 #include <SPI.h>
 #include <LoRa.h>
 #include <LoRandom.h>
@@ -32,9 +38,6 @@
 #include "ArduinoJson.h"
 // Click here to get the library: http://librarymanager/All#ArduinoJson
 
-// Uncomment the next line if uploading to Pavel
-//#define Pavel 1
-
 #ifdef Pavel
 #include <Wire.h>
 #include "ClosedCube_BME680.h"
@@ -46,6 +49,17 @@ double lastReading = 0;
 // let's define it and use it for pins 5/6 Vcc/GND
 ExternalEEPROM myMem;
 #endif
+
+#ifdef NEED_DHT
+#include "DHT.h"
+#define DHTPIN 9 // what pin we're connected to
+#define DHTTYPE DHT22 // DHT 22  (AM2302)
+DHT dht(DHTPIN, DHTTYPE);
+#define DHT_PING_DELAY 300000 // 5 minutes
+double lastReading = DHT_PING_DELAY * -1;
+float temp_hum_val[2] = {0};
+#endif
+
 
 #include "helper.h"
 #include "haversine.h"
@@ -152,7 +166,7 @@ void setup() {
   stockUpRandom();
   // first fill a 256-byte array with random bytes
   LoRa.setSpreadingFactor(mySF);
-  LoRa.setSignalBandwidth(BWs[myBW]*1e3);
+  LoRa.setSignalBandwidth(BWs[myBW] * 1e3);
   LoRa.setCodingRate4(myCR);
   LoRa.setPreambleLength(8);
   LoRa.setTxPower(TxPower, PA_OUTPUT_PA_BOOST_PIN);
@@ -180,13 +194,30 @@ void setup() {
 #else
   setDeviceName("Simon");
 #endif
+
+#ifdef NEED_DHT
+  dht.begin();
+  setDeviceName("Pavel");
+#endif
 }
 
 void loop() {
 #ifdef Pavel
   double t0 = millis();
-  if (t0 - lastReading >= BME_PING_DELAY) displayBME680();
+  if (t0 - lastReading >= BME_PING_DELAY) {
+    displayBME680();
+    lastReading = millis();
+  }
 #endif
+
+#ifdef NEED_DHT
+  double t0 = millis();
+  if (t0 - lastReading >= DHT_PING_DELAY) {
+    displayDHT();
+    lastReading = millis();
+  }
+#endif
+
   // Uncomment if you have a battery plugged in.
   //  if (millis() - batteryUpdateDelay > 10000) {
   //    getBattery();
@@ -306,6 +337,30 @@ void loop() {
       delay(dl);
       sendPong((char*)myID, rssi);
       LoRa.receive();
+    } else if (strcmp(cmd, "freq") == 0) {
+      // Do we have a frequency?
+      mydata = doc["freq"];
+      if (mydata.isNull()) {
+        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['freq']) is null!");
+      } else {
+        float fq = mydata.as<float>() * 1e6;
+        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['freq']) = " + String(fq, 3));
+        if (fq < 862e6 || fq > 1020e6) {
+          if (NEED_DEBUG == 1) {
+            SerialUSB.println("Requested frequency (" + String(fq) + ") is invalid!");
+          }
+        } else {
+          myFreq = fq;
+          LoRa.idle();
+          LoRa.setFrequency(myFreq);
+          delay(100);
+          LoRa.receive();
+          if (NEED_DEBUG == 1) {
+            SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
+          }
+          savePrefs();
+        }
+      }
     }
   }
   if (SerialUSB.available()) {
@@ -337,9 +392,16 @@ void loop() {
       // "special" commands
       c = msgBuf[1]; // Subcommand
 #ifdef Pavel
-      if (c == 'B') {
+      if (c == 'B' || c == 'b') {
         // BME680
         displayBME680();
+        return;
+      }
+#endif
+#ifdef NEED_DHT
+      if (c == '*' || c == '%') {
+        // DHT22
+        displayDHT();
         return;
       }
 #endif
@@ -412,4 +474,22 @@ void displayBME680() {
     lastReading = millis();
   }
 }
+#endif
+
+#ifdef NEED_DHT
+void displayDHT() {
+  // Reading temperature or humidity takes about 250 milliseconds!
+  // Sensor readings may also be up to 2 seconds 'old' (it's a very slow sensor)
+  if (!dht.readTempAndHumidity(temp_hum_val)) {
+    SerialUSB.print("Humidity: ");
+    SerialUSB.print(temp_hum_val[0]);
+    SerialUSB.print(" %\t");
+    SerialUSB.print("Temperature: ");
+    SerialUSB.print(temp_hum_val[1]);
+    SerialUSB.println(" *C");
+  } else {
+    SerialUSB.println("Failed to get temprature and humidity value.");
+  }
+}
+
 #endif

@@ -303,37 +303,83 @@ void stockUpRandom() {
 }
 
 void showHelp() {
-  SerialUSB.print("--- HELP ---");
-  SerialUSB.println("\n D<max 32 chars> : Set device name");
-  SerialUSB.print("   -> right now  : "); SerialUSB.println(deviceName);
-  SerialUSB.println("\n >xxxxxxxxxxx    : send string xxxxxxxxxxx");
-  SerialUSB.println("\n E               : turn on encryption");
-  SerialUSB.println(" e               : turn off encryption");
-  SerialUSB.print("   -> right now  : "); SerialUSB.println(needEncryption ? "on" : "off");
-  SerialUSB.println("\n P<32 chars>     : set password [32 chars]");
-  SerialUSB.println("  [exactly 32]     (Uses AES256)");
-  SerialUSB.println("\n R               : turn on PONG back [Reply on]");
-  SerialUSB.println(" r               : turn off PONG back [reply off]");
-  SerialUSB.print("   -> right now  : "); SerialUSB.println(pongBack ? "on" : "off");
-  SerialUSB.println("\n F<float>        : Set a new LoRa frequency.");
-  SerialUSB.println("  Between 862.0 and 1020.0 MHz (HF)");
-  SerialUSB.print("   -> right now  : "); SerialUSB.println(myFreq / 1e6, 3);
-  SerialUSB.println("\n S[7-12]         : Set a new LoRa Spreading Factor.");
-  SerialUSB.print("   -> right now  : "); SerialUSB.println(mySF);
-  SerialUSB.println("\n B[0-9]          : Set a new LoRa Bandwidth.");
-  SerialUSB.println("  From 0: 7.8 KHz to 9: 500 KHz");
-  SerialUSB.print("   -> right now  : ");
-  SerialUSB.print(myBW); SerialUSB.print(": ");
-  SerialUSB.print(BWs[myBW]); SerialUSB.println(" KHz");
-  SerialUSB.println("\n p               : send PING packet with counter & frequency");
-  SerialUSB.println("\n /Axx            : Set auto ping to xx seconds [5-60]. 0 = OFF");
-  SerialUSB.print("   -> right now  : "); SerialUSB.println(pongBack ? "on @ " + String(pingFrequency) : "off");
-  SerialUSB.println("\n /D              : Switch DEBUG on/off");
-  SerialUSB.print("   -> right now  : "); SerialUSB.println(NEED_DEBUG == 1 ? "ON" : "OFF");
-  SerialUSB.println("\n /H              : Show this help even if DEBUG is off");
-  SerialUSB.println("\n Anything else   : show this help message.");
+  char buff[256];
+  SerialUSB.println(" +==================+================================+");
+  sprintf(buff, " |%-18s|%32s|\n", "     Command", "Explanation            ");
+  SerialUSB.print(buff);
+  SerialUSB.println(" +==================+================================+");
+  sprintf(buff, " |%-18s|%32s|\n", "D<max 32 chars>", "Set [D]evice name");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", " -> right now", deviceName);
+  SerialUSB.print(buff);
+  SerialUSB.println(" +==================+================================+");
+  sprintf(buff, " |%-18s|%32s|\n", ">xxxxxxxxxxx", "send string xxxxxxxxxxx");
+  SerialUSB.print(buff);
+  SerialUSB.println(" +==================+================================+");
+  SerialUSB.println(" |                      OPTIONS                      |");
+  SerialUSB.println(" +==================+================================+");
+  sprintf(buff, " |%-18s|%32s|\n", " E", "turn on [E]ncryption");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", " e", "turn off [e]ncryption");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", "  -> right now", needEncryption ? "on" : "off");
+  SerialUSB.print(buff);
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " /P<32 chars>", "set [P]assword [32 chars]");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", " /p", "[exactly 32] (Uses AES256)");
+  SerialUSB.print(buff);
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " R", "turn on PONG back [R]eply on");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", " r", "turn off PONG back [r]eply off]");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", "  -> right now", pongBack ? "on" : "off");
+  SerialUSB.print(buff);
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " F<float>", "Set a new LoRa frequency.");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", " Frequency:", "Between 862 and 1020 MHz (HF)");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%28.3f MHz|\n", "  -> right now", (myFreq / 1e6));
+  SerialUSB.print(buff);
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " S[7-12]", "Set a new LoRa Spreading Factor.");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32u|\n", "  -> right now", mySF);
+  SerialUSB.print(buff);
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " B[0-9]", "Set a new LoRa [B]andwidth.");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", "", "From 0: 7.8 KHz to 9: 500 KHz");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32.3f|\n", "  -> right now", BWs[myBW]);
+  SerialUSB.print(buff);
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " C[5-8]", "Set a new [C]oding Rate.");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32u|\n", "  -> right now", myCR);
+  SerialUSB.print(buff);
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " T[7-17]", "Set a new [T]x Power.");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32u|\n", "  -> right now", TxPower);
+  SerialUSB.print(buff);
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " P or p", "Send [P]ING packet");
+  SerialUSB.print(buff);
+#ifdef Pavel
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " /B or /b", "Show [B]ME680 data");
+#endif
+#ifdef NEED_DHT
+  SerialUSB.println(F(" +---------------------------------------------------+"));
+  sprintf(buff, " |%-18s|%32s|\n", " /* or /%", "Show DHT22 data");
+#endif
+  SerialUSB.println(" +==================+================================+");
+  SerialUSB.println(" | Anything else    | show this help message.        |");
+  SerialUSB.println(" +==================+================================+");
 }
-
 void setPongBack(bool x) {
   pongBack = x;
   if (NEED_DEBUG == 1) {
@@ -489,7 +535,7 @@ void setBW(char* buff) {
     delay(100);
     LoRa.receive();
     if (NEED_DEBUG == 1) {
-      SerialUSB.println("BW set to " + String(BWs[myBW]));
+      SerialUSB.println("BW set to " + String(BWs[myBW])) + " KHz";
     }
     savePrefs();
   }
@@ -580,6 +626,7 @@ void sendPing() {
   myID[8] = 0;
   doc["UUID"] = myID;
   doc["cmd"] = "ping";
+  doc["from"] = deviceName;
   char freq[8];
   snprintf( freq, 8, "%f", float(myFreq / 1e6) );
   doc["freq"] = freq;
@@ -603,14 +650,17 @@ void sendPong(char *msgID, int rssi) {
   getRandomBytes(encBuf, 4);
   array2hex(encBuf, 4, (uint8_t*)myID);
   myID[8] = 0;
-  doc["UUID"] = myID;
-  doc["msgID"] = msgID;
+  doc["UUID"] = msgID ;
   doc["cmd"] = "pong";
   doc["from"] = deviceName;
   doc["rcvRSSI"] = rssi;
-  char freq[8];
-  snprintf( freq, 8, "%f", float(myFreq / 1e6) );
-  doc["freq"] = freq;
+#ifdef NEED_DHT
+  doc["H"] = temp_hum_val[0];
+  doc["T"] = temp_hum_val[1];
+#endif
+//  char freq[8];
+//  snprintf( freq, 8, "%f", float(myFreq / 1e6) );
+//  doc["freq"] = freq;
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
   if (NEED_DEBUG == 1) {

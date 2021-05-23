@@ -2,7 +2,7 @@
 
 A project demonstrating how to do P2P encrypted communication using LoRa on the BastWAN.
 
-It is using the LoRandom library by ours truly and the LoRa library by Sandeep Mistry. You could replace this library with whatever flavor you prefer, just pay attention to which pins are in use, and the functions used to read from and write to SPI. This is important because you need to provide 2 functions:
+It is using the LoRandom library by yours truly and the LoRa library by Sandeep Mistry. You could replace this library with whatever flavor you prefer, just pay attention to which pins are in use, and the functions used to read from and write to SPI. This is important because you need to provide 2 functions:
 
 ```c++
 void writeRegister(uint8_t reg, uint8_t value) {
@@ -120,3 +120,16 @@ You need to define the buffer lengths in `SparkFun_External_EEPROM.h`. BastWAN i
 Once this is done, you should be able to compile the code without problems.
 
 ![PongBack](PongBack.jpg)
+
+## UPDATE [2021/05/23]
+
+I've played around with settings a bit, adding stuff for Pavel, my outdoors BastWAN. Some features are implemented, others WIP. I've added the possibility to add a BME680 – should you wish to add environment data to your packets. It was originally for the BastMobile, and I retrofitted it in there. Another, separate, environment addition is a DHT22, which I *am* using for the Pavel setup: since it is in a metal enclosure, I want to now how hot it gets in there – it is summer here, and there's lots of sunshine. PONG packets from Pavel contain Temperature & Humidity.
+
+The BastMobile can (and does) save its settings to an SD card. I don;t have this on simpler installs like Pavel, but I do have EEPROMS in a drawer, so I am planning to make use of them and add an I2C EEPROM to save and read settings. WIP.
+
+Again on BastMobile I had a better `showHelp()` menu, so I retrofitted that to this version. It is quite more readable.
+
+There's also an `AutoPing` function – something I have been using on another platform (T-Beam + Android): with a fixed machine pinging on a set schedule, it's easy to detect areas of reception while walking, and log them.
+
+
+![Pavel](Pavel.jpg)
