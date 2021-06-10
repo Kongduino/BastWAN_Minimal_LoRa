@@ -33,6 +33,15 @@ void handleSerial() {
       needHexification = false;
       SerialUSB.println("needHexification set to: OFF");
       return;
+    } else if (strcmp((char*)msgBuf, "/HM1") == 0) {
+      needAuthentification = true;
+      char buff[64];
+      SerialUSB.println("needAuthentification set to: ON");
+      return;
+    } else if (strcmp((char*)msgBuf, "/HM0") == 0) {
+      needAuthentification = false;
+      SerialUSB.println("needAuthentification set to: OFF");
+      return;
     } else if (c == 'R' || c == 'r') {
       if (c1 = '1') setPongBack(true);
       if (c1 = '0') setPongBack(false);
@@ -140,6 +149,13 @@ void showHelp() {
   sprintf(buff, " |%-18s|%32s|\n", " /HX0", "turn off hexification");
   SerialUSB.print(buff);
   sprintf(buff, " |%-18s|%32s|\n", "  -> right now", needHexification ? "on" : "off");
+  SerialUSB.print(buff);
+  SerialUSB.println(" +---------------------------------------------------+");
+  sprintf(buff, " |%-18s|%32s|\n", " /HM1", "turn on authentication");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", " /HM0", "turn off authentication");
+  SerialUSB.print(buff);
+  sprintf(buff, " |%-18s|%32s|\n", "  -> right now", needAuthentification ? "on" : "off");
   SerialUSB.print(buff);
   SerialUSB.println(" +---------------------------------------------------+");
   sprintf(buff, " |%-18s|%32s|\n", " /PW<32 chars>", "set password [32 chars]");

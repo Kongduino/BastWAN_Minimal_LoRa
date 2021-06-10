@@ -49,7 +49,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 uint8_t myMode = ECB;
 bool needEncryption = true;
-bool needHexification = true;
+bool needHexification = false;
 bool needAuthentification = true;
 bool pongBack = true;
 bool OCP_ON = false, PA_BOOST = true;

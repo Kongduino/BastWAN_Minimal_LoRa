@@ -75,6 +75,8 @@ I am using a customized version of the LoRa library. The change is easy to do bu
 
 The declarations of these 2 functions are private, and need to be moved to public. The code needs access to these functions. And honestly there's no good reason for these 2 functions to be private...
 
+*Note:* My code [made it](https://github.com/sandeepmistry/arduino-LoRa/pull/395), and then some, to the LoRa library. I'm still using my own code, but you should be safe using the official version. Anyway, yay to me :-)
+
 ## basic_string.h
 
 It is missing some C++ functions, so you need to add the following code to `basic_string.h`, which should be located somewhere like:
@@ -96,6 +98,8 @@ Code:
     void __throw_logic_error(char const*) {}
   }
 ```
+
+*Note:* Putting this in the the .ino file works, but limits the effect to that particular project. Plus/minus. Up to you.
 
 ## SparkFun_External_EEPROM.h
 
@@ -133,3 +137,40 @@ There's also an `AutoPing` function – something I have been using on another p
 
 
 ![Pavel](Pavel.jpg)
+
+## UPDATE [2021/06/10]
+
+I have added HMAC message authentication. This happens in two parts. Well, 3, really.
+
+1. SHA-2 implementation.
+
+![SHA-2 Test](SHA-224_256.png)
+
+2. HMAC-SHA-2 implementation.
+
+![HMAC-SHA-2 Test](HMAC-SHA-224_256.png)
+
+These two by [Olivier Gay](https://github.com/ogay/hmac/). Mucha gracias, collègue.
+
+So once you have this, you need to append HMAC to your encrypted packet. Remember, [Encrypt Then Authenticate](https://moxie.org/2011/12/13/the-cryptographic-doom-principle.html). So I need to take a little detour now. So far, the packets were HEX-encoded: I was using `LoRa.print()`, so a `0x00` in the middle would have ruined my lunch. A bit stupid, but it was a nice exercice in converting efficiently hex values to ASCII and vice-verse. I am now using `LoRa.write(encBuf, olen);`, which cuts the overall size of the buffer in half, and enables me to send more data at once if needed (and I will need it, as I writing code to send a low-res image from a camera attached to Pavel on my rooftop, to my BastMobile: the more date in each packet the better).
+
+So I introduced, alongside `needEncryption`, two more options, changeable:
+
+```c
+bool needEncryption = true;
+bool needHexification = false;
+bool needAuthentification = true;
+```
+
+`needHexification` allows you to still send hexified packets. It as a Serial command, `HX0~1`. `needAuthentification` is for HMAC. It as a Serial command, `HM0~1`. Here's a test with needHexification on:
+
+![HMAC_LIVE_TEST0](HMAC_LIVE_TEST0.png)
+
+Here is a PING / PONG test, non-hexified, in two parts. Everything works smoothly, even though the output is for not verbose – I needed that to debug...
+
+![HMAC_LIVE_TEST1a](HMAC_LIVE_TEST1a.png)
+
+![HMAC_LIVE_TEST1b](HMAC_LIVE_TEST1b.png)
+
+
+Ref: [this Twitter thread](https://twitter.com/Kongduino/status/1402420169826127872).
