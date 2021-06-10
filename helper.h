@@ -49,7 +49,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 uint8_t myMode = ECB;
 bool needEncryption = true;
+bool needHexification = true;
+bool needAuthentification = true;
 bool pongBack = true;
+bool OCP_ON = false, PA_BOOST = true;
 uint8_t SecretKey[33] = "YELLOW SUBMARINEENIRAMBUS WOLLEY";
 uint8_t encBuf[128], hexBuf[256], msgBuf[256];
 uint8_t randomStock[256];
@@ -57,7 +60,7 @@ uint8_t randomIndex = 0;
 float lastBattery = 0.0;
 double batteryUpdateDelay;
 char deviceName[33];
-uint32_t myFreq = 868125000;
+uint32_t myFreq = 864125000;
 int mySF = 10;
 uint8_t myBW = 8;
 uint8_t myCR = 5;
@@ -74,7 +77,7 @@ float homeLongitude = 114.0003769;
 uint8_t TxPower = 20;
 
 uint16_t encryptECB(uint8_t*);
-void decryptECB(uint8_t*, uint8_t);
+int16_t decryptECB(uint8_t*, uint8_t);
 void array2hex(uint8_t *, size_t, uint8_t *, uint8_t);
 void hex2array(uint8_t *, uint8_t *, size_t);
 void sendPacket(char *);
@@ -95,6 +98,7 @@ void setDeviceName(char *);
 void sendJSONPacket();
 void savePrefs();
 void setAutoPing(char *);
+void handleSerial();
 
 void writeRegister(uint8_t reg, uint8_t value) {
   LoRa.writeRegister(reg, value);
@@ -228,18 +232,66 @@ void sendPacket(char *buff) {
   LoRa.writeRegister(REG_LNA, 0x23); // TURN ON LNA FOR RECEIVE
 }
 
-void decryptECB(uint8_t* myBuf, uint8_t olen) {
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println(" . Decrypting:");
-    hexDump(myBuf, olen);
+int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
+  hexDump(myBuf, olen);
+  uint8_t len;
+  if (needHexification) {
+    // Dehex buffer if needed
     SerialUSB.println("  - Dehexing myBuf to encBuf:");
-  }
-  hex2array(myBuf, encBuf, olen);
-  uint8_t len = olen / 2;
-  if (NEED_DEBUG == 1) {
+    hex2array(myBuf, encBuf, olen);
+    len = olen / 2;
+    if (needAuthentification) {
+      // autenticated on the hexed version
+      // hmac the buffer minus SHA2xx_DIGEST_SIZE
+      // compare with the last SHA2xx_DIGEST_SIZE bytes
+      // if correct, reduce len by SHA2xx_DIGEST_SIZE
+      unsigned char key[20];
+      unsigned char digest[SHA224_DIGEST_SIZE];
+      unsigned char mac0[SHA224_DIGEST_SIZE];
+      unsigned char mac1[SHA224_DIGEST_SIZE];
+      memset(key, 0x0b, 20);// set up key
+      hmac_sha224(key, 20, (unsigned char *)myBuf, olen - SHA224_DIGEST_SIZE * 2, mac0, SHA224_DIGEST_SIZE);
+      hex2array((unsigned char *)myBuf + olen - SHA224_DIGEST_SIZE * 2, mac1, SHA224_DIGEST_SIZE * 2);
+      SerialUSB.println("Calculated HMAC:"); hexDump(mac0, SHA224_DIGEST_SIZE);
+      SerialUSB.println("Provided HMAC:");
+      hexDump((unsigned char *)myBuf + olen - SHA224_DIGEST_SIZE * 2, SHA224_DIGEST_SIZE * 2);
+      hexDump(mac1, SHA224_DIGEST_SIZE);
+      if (memcmp(mac0, mac1, SHA224_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
+      else {
+        SerialUSB.println(" * test failed");
+        // notify we failed
+        return -1;
+      }
+    }
+  } else {
+    // or just copy over
+    memcpy(encBuf, myBuf, olen);
+    len = olen;
+    if (needAuthentification) {
+      // hmac the buffer minus SHA2xx_DIGEST_SIZE
+      // compare with the last SHA2xx_DIGEST_SIZE bytes
+      // if correct, reduce len by SHA2xx_DIGEST_SIZE
+      unsigned char key[20];
+      unsigned char digest[SHA224_DIGEST_SIZE];
+      unsigned char mac[SHA224_DIGEST_SIZE];
+      memset(key, 0x0b, 20);// set up key
+      SerialUSB.println("Original HMAC:"); hexDump((unsigned char *)encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE);
+      hmac_sha224(key, 20, (unsigned char *)encBuf, len - SHA224_DIGEST_SIZE, mac, SHA224_DIGEST_SIZE);
+      SerialUSB.println("HMAC:"); hexDump(mac, SHA224_DIGEST_SIZE);
+      if (memcmp(mac, encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
+      else {
+        SerialUSB.println(" * test failed");
+        // notify we failed
+        return -1;
+      }
+    }
     hexDump(encBuf, len);
-    SerialUSB.println("  - Decrypting encBuf:");
+    // Now do we have a MAC?
   }
+
+  // hexDump(encBuf, len);
+  // SerialUSB.print("  - Decrypting encBuf with SecretKey: ");
+  // SerialUSB.println((char*)SecretKey);
   struct AES_ctx ctx;
   AES_init_ctx(&ctx, SecretKey);
   uint8_t rounds = len / 16, steps = 0;
@@ -249,9 +301,8 @@ void decryptECB(uint8_t* myBuf, uint8_t olen) {
     steps += 16;
     // encrypts in place, 16 bytes at a time
   } encBuf[steps] = 0;
-  if (NEED_DEBUG == 1) {
-    hexDump(encBuf, len);
-  }
+  hexDump(encBuf, len);
+  return len;
 }
 
 uint16_t encryptECB(uint8_t* myBuf) {
@@ -259,7 +310,6 @@ uint16_t encryptECB(uint8_t* myBuf) {
   uint8_t len = strlen((char*)myBuf);
   uint16_t olen;
   struct AES_ctx ctx;
-  // prepare the buffer
   olen = len;
   if (olen != 16) {
     if (olen % 16 > 0) {
@@ -267,18 +317,11 @@ uint16_t encryptECB(uint8_t* myBuf) {
       else olen += 16 - (olen % 16);
     }
   }
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("myBuf:");
-    SerialUSB.print("[encryptECB]: ");
-    SerialUSB.print("olen = " + String(olen));
-    SerialUSB.println(", len = " + String(len));
-  }
   memset(encBuf, (olen - len), olen);
   memcpy(encBuf, myBuf, len);
+  // SerialUSB.println("myBuf:");
+  // hexDump(encBuf, olen);
   encBuf[len] = 0;
-  if (NEED_DEBUG == 1) {
-    hexDump(encBuf, olen);
-  }
   AES_init_ctx(&ctx, (const uint8_t*)SecretKey);
   uint8_t rounds = olen / 16, steps = 0;
   for (uint8_t ix = 0; ix < rounds; ix++) {
@@ -287,14 +330,54 @@ uint16_t encryptECB(uint8_t* myBuf) {
     steps += 16;
     // encrypts in place, 16 bytes at a time
   }
-  array2hex(encBuf, olen, hexBuf);
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("encBuf:");
-    hexDump(encBuf, olen);
+  SerialUSB.println("encBuf:");
+  hexDump(encBuf, olen);
+  // needHexification
+  // If it is on (it is/was default in pre-MAC versions)
+  // encBuf is hexified into hexBuf
+  // and olen is doubled.
+  if (needHexification) {
+    array2hex(encBuf, olen, hexBuf);
+    olen *= 2;
     SerialUSB.println("hexBuf:");
-    hexDump(hexBuf, olen * 2);
+    hexDump(hexBuf, olen);
   }
-  return (olen * 2);
+
+  // Now do we have to add a MAC?
+  if (needAuthentification) {
+    // hmac the buffer
+    // increase len by SHA2xx_DIGEST_SIZE
+    unsigned char key[20];
+    unsigned char digest[SHA224_DIGEST_SIZE];
+    unsigned char mac[SHA224_DIGEST_SIZE];
+    memset(key, 0x0b, 20);// set up key
+    if (needHexification) {
+      // authenticate
+      hmac_sha224(key, 20, (unsigned char *)hexBuf, olen, mac, SHA224_DIGEST_SIZE);
+      // hexify the mac to encBuf
+      array2hex(mac, SHA224_DIGEST_SIZE, encBuf);
+      SerialUSB.println("MAC, hexified:");
+      hexDump(encBuf, SHA224_DIGEST_SIZE * 2);
+      // copy encBuf at the back of hexBuf
+      // OF COURSE IT'D BE NICE TO CHECK THAT OLEN+SHA224_DIGEST_SIZE*2 DOESN'T BLOW UP THE BUFFER
+      memcpy((unsigned char*)hexBuf + olen, encBuf, SHA224_DIGEST_SIZE * 2);
+      // increase olen
+      olen += SHA224_DIGEST_SIZE * 2;
+      SerialUSB.println("hexBuf with MAC:");
+      hexDump(hexBuf, olen);
+    } else {
+      // authenticate in place
+      // at offset olen
+      // OF COURSE IT'D BE NICE TO CHECK THAT OLEN+SHA224_DIGEST_SIZE DOESN'T BLOW UP THE BUFFER
+      hmac_sha224(key, 20, (unsigned char *)encBuf, olen, (unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
+      SerialUSB.println("MAC, plain [" + String(olen) + "]:");
+      hexDump((unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
+      olen += SHA224_DIGEST_SIZE;
+      SerialUSB.println("encBuf with MAC:");
+      hexDump(encBuf, olen);
+    }
+  }
+  return olen;
 }
 
 void stockUpRandom() {
@@ -302,84 +385,6 @@ void stockUpRandom() {
   randomIndex = 0;
 }
 
-void showHelp() {
-  char buff[256];
-  SerialUSB.println(" +==================+================================+");
-  sprintf(buff, " |%-18s|%32s|\n", "     Command", "Explanation            ");
-  SerialUSB.print(buff);
-  SerialUSB.println(" +==================+================================+");
-  sprintf(buff, " |%-18s|%32s|\n", "D<max 32 chars>", "Set [D]evice name");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", " -> right now", deviceName);
-  SerialUSB.print(buff);
-  SerialUSB.println(" +==================+================================+");
-  sprintf(buff, " |%-18s|%32s|\n", ">xxxxxxxxxxx", "send string xxxxxxxxxxx");
-  SerialUSB.print(buff);
-  SerialUSB.println(" +==================+================================+");
-  SerialUSB.println(" |                      OPTIONS                      |");
-  SerialUSB.println(" +==================+================================+");
-  sprintf(buff, " |%-18s|%32s|\n", " E", "turn on [E]ncryption");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", " e", "turn off [e]ncryption");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", "  -> right now", needEncryption ? "on" : "off");
-  SerialUSB.print(buff);
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " /P<32 chars>", "set [P]assword [32 chars]");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", " /p", "[exactly 32] (Uses AES256)");
-  SerialUSB.print(buff);
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " R", "turn on PONG back [R]eply on");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", " r", "turn off PONG back [r]eply off]");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", "  -> right now", pongBack ? "on" : "off");
-  SerialUSB.print(buff);
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " F<float>", "Set a new LoRa frequency.");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", " Frequency:", "Between 862 and 1020 MHz (HF)");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%28.3f MHz|\n", "  -> right now", (myFreq / 1e6));
-  SerialUSB.print(buff);
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " S[7-12]", "Set a new LoRa Spreading Factor.");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32u|\n", "  -> right now", mySF);
-  SerialUSB.print(buff);
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " B[0-9]", "Set a new LoRa [B]andwidth.");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", "", "From 0: 7.8 KHz to 9: 500 KHz");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32.3f|\n", "  -> right now", BWs[myBW]);
-  SerialUSB.print(buff);
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " C[5-8]", "Set a new [C]oding Rate.");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32u|\n", "  -> right now", myCR);
-  SerialUSB.print(buff);
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " T[7-17]", "Set a new [T]x Power.");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32u|\n", "  -> right now", TxPower);
-  SerialUSB.print(buff);
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " P or p", "Send [P]ING packet");
-  SerialUSB.print(buff);
-#ifdef Pavel
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " /B or /b", "Show [B]ME680 data");
-#endif
-#ifdef NEED_DHT
-  SerialUSB.println(F(" +---------------------------------------------------+"));
-  sprintf(buff, " |%-18s|%32s|\n", " /* or /%", "Show DHT22 data");
-#endif
-  SerialUSB.println(" +==================+================================+");
-  SerialUSB.println(" | Anything else    | show this help message.        |");
-  SerialUSB.println(" +==================+================================+");
-}
 void setPongBack(bool x) {
   pongBack = x;
   if (NEED_DEBUG == 1) {
@@ -584,7 +589,7 @@ void sendJSONPacket() {
     // olen = len(hexBuf)
   } // SerialUSB.println("olen: " + String(olen));
   if (NEED_DEBUG == 1) {
-    SerialUSB.print("Sending packet...");
+    SerialUSB.println("Sending packet...");
   }
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
@@ -593,7 +598,10 @@ void sendJSONPacket() {
   LoRa.beginPacket();
   if (needEncryption) {
     //LoRa.print((char*)hexBuf);
-    LoRa.write(hexBuf, olen);
+    // hexDump(hexBuf, olen);
+    // hexDump(encBuf, olen);
+    if (needHexification) LoRa.write(hexBuf, olen);
+    else LoRa.write(encBuf, olen);
   } else {
     //LoRa.print(buff);
     LoRa.write(msgBuf, olen);
@@ -658,9 +666,9 @@ void sendPong(char *msgID, int rssi) {
   doc["H"] = temp_hum_val[0];
   doc["T"] = temp_hum_val[1];
 #endif
-//  char freq[8];
-//  snprintf( freq, 8, "%f", float(myFreq / 1e6) );
-//  doc["freq"] = freq;
+  //  char freq[8];
+  //  snprintf( freq, 8, "%f", float(myFreq / 1e6) );
+  //  doc["freq"] = freq;
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
   if (NEED_DEBUG == 1) {

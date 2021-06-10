@@ -8,6 +8,7 @@
 #include <LoRa.h>
 #include <LoRandom.h>
 #include "aes.c"
+#include "sha2.c"
 #include "SparkFun_External_EEPROM.h"
 // Click here to get the library: http://librarymanager/All#SparkFun_External_EEPROM
 /*
@@ -63,6 +64,7 @@ float temp_hum_val[2] = {0};
 
 #include "helper.h"
 #include "haversine.h"
+#include "SerialCommands.h"
 
 /*
   Welcome to role-assigned values: each machine will have a specific role,
@@ -171,6 +173,8 @@ void setup() {
   LoRa.setPreambleLength(8);
   LoRa.setTxPower(TxPower, PA_OUTPUT_PA_BOOST_PIN);
   digitalWrite(RFM_SWITCH, HIGH);
+  if (PA_BOOST) LoRa.setTxPower(TxPower, PA_OUTPUT_PA_BOOST_PIN);
+  else LoRa.setTxPower(TxPower, 0); // NOT RECOMMENDED!
   LoRa.writeRegister(REG_PA_CONFIG, 0b11111111); // That's for the transceiver
   // 0B 1111 1111
   // 1    PA_BOOST pin. Maximum power of +20 dBm
@@ -181,7 +185,8 @@ void setup() {
   // 00000 RESERVED
   // 111 +20dBm on PA_BOOST when OutputPower=1111
   //  LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
-  LoRa.writeRegister(REG_OCP, 0b00111111); // MAX OCP
+  if (OCP_ON) LoRa.writeRegister(REG_OCP, 0b00111111); // OCP Max 240
+  else LoRa.writeRegister(REG_OCP, 0b00011111); // NO OCP
   // 0b 0010 0011
   // 001 G1 = highest gain
   // 00  Default LNA current
@@ -225,25 +230,29 @@ void loop() {
   //  }
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
-    memset(msgBuf, 0, 256);
+    memset(msgBuf, 0xFF, 256);
     int ix = 0;
     while (LoRa.available()) {
       char c = (char)LoRa.read();
       delay(10);
-      //if (c > 31)
       msgBuf[ix++] = c;
-      // filter out non-printable chars (like 0x1A)
     } msgBuf[ix] = 0;
     if (NEED_DEBUG == 1) {
-      SerialUSB.print("Received packet: ");
+      SerialUSB.println("Received packet: ");
+      hexDump(msgBuf, ix);
     }
     if (needEncryption) {
       if (NEED_DEBUG == 1) {
         SerialUSB.println("\n . Decrypting...");
       }
-      decryptECB(msgBuf, strlen((char*)msgBuf));
-      memset(msgBuf, 0, 256);
-      memcpy(msgBuf, encBuf, strlen((char*)encBuf));
+      packetSize = decryptECB(msgBuf, ix);
+      if (packetSize > -1) {
+        memset(msgBuf, 0, 256);
+        memcpy(msgBuf, encBuf, packetSize);
+      } else {
+        SerialUSB.println("Error while decrypting");
+        return;
+      }
     }
 
     StaticJsonDocument<200> doc;
@@ -364,83 +373,10 @@ void loop() {
     }
   }
   if (SerialUSB.available()) {
-    memset(msgBuf, 0, 256);
-    int ix = 0;
-    while (SerialUSB.available()) {
-      char c = SerialUSB.read();
-      delay(10);
-      if (c > 31) msgBuf[ix++] = c;
-    } msgBuf[ix] = 0;
-    char c = msgBuf[0]; // Command
-    if (c == '>') {
-      char buff[256];
-      strcpy(buff, (char*)msgBuf + 1);
-      prepareJSONPacket(buff);
-      sendJSONPacket();
-    } else if (c == 'D') setDeviceName((char*)msgBuf + 1);
-    else if (c == 'E') needEncryption = true;
-    else if (c == 'e') needEncryption = false;
-    else if (c == 'P') setPWD((char*)msgBuf + 1);
-    else if (c == 'R') setPongBack(true);
-    else if (c == 'r') setPongBack(false);
-    else if (c == 'F') setFQ((char*)msgBuf + 1);
-    else if (c == 'S') setSF((char*)msgBuf + 1);
-    else if (c == 'B') setBW((char*)msgBuf + 1);
-    else if (c == 'C') setCR((char*)msgBuf + 1);
-    else if (c == 'p') sendPing();
-    else if (c == '/') {
-      // "special" commands
-      c = msgBuf[1]; // Subcommand
-#ifdef Pavel
-      if (c == 'B' || c == 'b') {
-        // BME680
-        displayBME680();
-        return;
-      }
-#endif
-#ifdef NEED_DHT
-      if (c == '*' || c == '%') {
-        // DHT22
-        displayDHT();
-        return;
-      }
-#endif
-      if (c == 'A') {
-        // Auto Ping
-        setAutoPing((char*)msgBuf + 2);
-        return;
-      }
-      if (c == 'P') {
-        // TxPower
-        setTxPower((char*)msgBuf + 2);
-        return;
-      }
-      if (c == 'D') {
-        // Debug ON/OFF
-        uint8_t d = msgBuf[2];
-        if (d == 0) {
-          NEED_DEBUG = 1 - NEED_DEBUG;
-          return;
-        } else if (d == '0') {
-          NEED_DEBUG = 0;
-          return;
-        } else if (d == '1') {
-          NEED_DEBUG = 1;
-          return;
-        }
-      }
-      if (c == 'H') {
-        // Show help regardless of Debug ON/OFF
-        showHelp();
-        return;
-      }
-    } else {
-      if (NEED_DEBUG == 1) {
-        SerialUSB.println((char*)msgBuf);
-        showHelp();
-        return;
-      }
-    }
+    // When the BastMobile is connected via USB to a computer,
+    // you change make changes to settings via Serial,
+    // like in BastWAN_Minimal_LoRa
+    handleSerial();
   }
   if (needPing) {
     double t0 = millis();
