@@ -140,6 +140,8 @@ There's also an `AutoPing` function – something I have been using on another p
 
 ## UPDATE [2021/06/10]
 
+### HMAC
+
 I have added HMAC message authentication. This happens in two parts. Well, 3, really.
 
 1. SHA-2 implementation.
@@ -152,7 +154,7 @@ I have added HMAC message authentication. This happens in two parts. Well, 3, re
 
 These two by [Olivier Gay](https://github.com/ogay/hmac/). Mucha gracias, collègue.
 
-So once you have this, you need to append HMAC to your encrypted packet. Remember, [Encrypt Then Authenticate](https://moxie.org/2011/12/13/the-cryptographic-doom-principle.html). So I need to take a little detour now. So far, the packets were HEX-encoded: I was using `LoRa.print()`, so a `0x00` in the middle would have ruined my lunch. A bit stupid, but it was a nice exercice in converting efficiently hex values to ASCII and vice-verse. I am now using `LoRa.write(encBuf, olen);`, which cuts the overall size of the buffer in half, and enables me to send more data at once if needed (and I will need it, as I writing code to send a low-res image from a camera attached to Pavel on my rooftop, to my BastMobile: the more date in each packet the better).
+So once you have this, you need to append HMAC to your encrypted packet. Remember, [Encrypt Then Authenticate](https://moxie.org/2011/12/13/the-cryptographic-doom-principle.html). So I need to take a little detour now. So far, the packets were HEX-encoded: I was using `LoRa.print()`, so a `0x00` in the middle would have ruined my lunch. A bit stupid, but it was a nice exercice in converting efficiently hex values to ASCII and vice-verse. I am now using `LoRa.write(encBuf, olen);`, which cuts the overall size of the buffer in half, and enables me to send more data at once if needed (and I will need it, as I'm writing code to send a low-res image from a camera attached to Pavel on my rooftop, to my BastMobile: the more date in each packet the better).
 
 So I introduced, alongside `needEncryption`, two more options, changeable:
 
@@ -172,5 +174,17 @@ Here is a PING / PONG test, non-hexified, in two parts. Everything works smoothl
 
 ![HMAC_LIVE_TEST1b](HMAC_LIVE_TEST1b.png)
 
+*Ref:* [this Twitter thread](https://twitter.com/Kongduino/status/1402420169826127872).
 
-Ref: [this Twitter thread](https://twitter.com/Kongduino/status/1402420169826127872).
+### Yagi
+
+I bought a Yagi antenna, after a long period of hesitation – not about the Yagi itself, I knew it would be nice, but because I wondered where to put it. Turns out, I have a rooftop, and the parasol is the (almost) perfect stand for the Yagi. Because it's a 433 MHz (which turns out to be an almost perfectly tuned for 468, but AAAANYWAY), I tried it on a TTGO LoRa OLED, sending a PING packet every minute, with a T-beam serving as a receiver, coupled to my Android phone with a custom mapping app.
+
+![Yagi_Stand](Yagi_Stand.jpg)
+Good enough!
+
+![Yagi_6.06](Yagi_6.06.jpg)
+See? 6.06 km. Well it says 6.03 here, but I went a little further out. No Line of Sight. Godzilla buildings everywhere!
+
+So now I need to buy a new Yagi, in 800-924 MHz, so that I can try it with the BastWAN series. Too bad the RAK4260 doesn't exist in 433...
+

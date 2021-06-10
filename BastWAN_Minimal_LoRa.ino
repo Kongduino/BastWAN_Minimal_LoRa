@@ -222,7 +222,6 @@ void loop() {
     lastReading = millis();
   }
 #endif
-
   // Uncomment if you have a battery plugged in.
   //  if (millis() - batteryUpdateDelay > 10000) {
   //    getBattery();
