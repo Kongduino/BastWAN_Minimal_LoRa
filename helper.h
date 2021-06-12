@@ -284,9 +284,10 @@ int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
         // notify we failed
         return -1;
       }
+      // deduct SHA224_DIGEST_SIZE from length
+      len -= SHA224_DIGEST_SIZE;
     }
     hexDump(encBuf, len);
-    // Now do we have a MAC?
   }
 
   // hexDump(encBuf, len);

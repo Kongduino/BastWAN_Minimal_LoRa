@@ -1,6 +1,7 @@
 // Uncomment the next line if uploading to Pavel
 //#define Pavel 1
-
+// Uncomment this next line if you want to use a BME680
+//#define NEED_BME 1
 // Uncomment this next line if you want to use a DHT22
 //#define NEED_DHT
 
@@ -39,7 +40,7 @@
 #include "ArduinoJson.h"
 // Click here to get the library: http://librarymanager/All#ArduinoJson
 
-#ifdef Pavel
+#ifdef NEED_BME
 #include <Wire.h>
 #include "ClosedCube_BME680.h"
 ClosedCube_BME680 bme680;
@@ -73,6 +74,8 @@ float temp_hum_val[2] = {0};
   Pavel:
    - Outdoors (WHEN IT'S NOT RAINING) device.
    - BME680 inside
+   OR
+   - DHT22 inside
    - Possibly an OV5208 camera soon
 */
 
@@ -139,7 +142,7 @@ void setup() {
   }
 #endif
 
-#ifdef Pavel
+#ifdef NEED_BME
   // ---- BME STUFF ----
   if (NEED_DEBUG == 1) {
     SerialUSB.println(" - ClosedCube BME680 ([T]emperature, [P]ressure, [H]umidity)");
@@ -199,29 +202,26 @@ void setup() {
 #else
   setDeviceName("Simon");
 #endif
-
 #ifdef NEED_DHT
   dht.begin();
-  setDeviceName("Pavel");
 #endif
 }
 
 void loop() {
-#ifdef Pavel
   double t0 = millis();
+#ifdef NEED_BME
   if (t0 - lastReading >= BME_PING_DELAY) {
     displayBME680();
     lastReading = millis();
   }
 #endif
-
 #ifdef NEED_DHT
-  double t0 = millis();
-  if (t0 - lastReading >= DHT_PING_DELAY) {
+  if (t0 - lastReading >= BME_PING_DELAY) {
     displayDHT();
     lastReading = millis();
   }
 #endif
+
   // Uncomment if you have a battery plugged in.
   //  if (millis() - batteryUpdateDelay > 10000) {
   //    getBattery();
@@ -273,18 +273,14 @@ void loop() {
     }
     // Print 4-byte ID
     const char *myID = doc["UUID"];
-
     // Print sender
     const char *from = doc["from"];
-
     // Print command
     const char *cmd = doc["cmd"];
-
     // Do we have a message?
     if (strcmp(cmd, "msg") == 0) {
       const char *msg = doc["msg"];
     }
-
     bool hasLatLong = true;
     float tLat, tLong, tDistance;
     JsonVariant mydata = doc["lat"];
@@ -304,7 +300,6 @@ void loop() {
         tDistance = haversine(homeLatitude, homeLongitude, tLat, tLong);
       }
     }
-
     if (NEED_DEBUG == 1) {
       SerialUSB.print("ID: ");
       SerialUSB.println(myID);
@@ -330,7 +325,6 @@ void loop() {
       SerialUSB.print("RSSI: ");
       SerialUSB.println(rssi);
     }
-
     if (strcmp(cmd, "ping") == 0 && pongBack) {
       // if it's a PING, and we are set to respond:
       LoRa.idle();
@@ -423,7 +417,7 @@ void displayDHT() {
     SerialUSB.print(temp_hum_val[1]);
     SerialUSB.println(" *C");
   } else {
-    SerialUSB.println("Failed to get temprature and humidity value.");
+    SerialUSB.println("Failed to get temperature and humidity value.");
   }
 }
 
