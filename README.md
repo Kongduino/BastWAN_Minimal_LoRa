@@ -41,7 +41,7 @@ The first one gives you one randome byte, as expected. The second stores `count`
 
 The AES encryption / decryption code is the original [Rijndael implementation](http://efgh.com/software/rijndael.htm), and is provided in the sketch. There are better implementations, but it works, and is simple enough to read. Although, with crypto, simple is always debatable!
 
-Transmission has been improved by surround the LoRa send code with:
+Transmission has been improved by surrounding the LoRa send code with:
 
 ```c
   digitalWrite(RFM_SWITCH, LOW);
@@ -52,15 +52,76 @@ Transmission has been improved by surround the LoRa send code with:
 
 ![Test](LoRaTest.png)
 
-There are a few commands to be used in the Serial Monitor (or another Terminal):
+There are a few commands to be used in the Serial Monitor (or another Terminal). Well, it used to be a few. There are now QUITE A FEW:
 
-![Help](Help.png)
+```
+ +==================+================================+
+ |     Command      |         Explanation            |
+ +==================+================================+
+ |/DN<max 32 chars> |                 Set device name|
+ | -> right now     |                      BastMobile|
+ +==================+================================+
+ |/>xxxxxxxxxxx     |         send string xxxxxxxxxxx|
+ +==================+================================+
+ |                      OPTIONS                      |
+ +==================+================================+
+ | /E1 or /e1       |              turn on encryption|
+ | /E0 or /e0       |             turn off encryption|
+ |  -> right now    |                              on|
+ +---------------------------------------------------+
+ | /HX1             |            turn on hexification|
+ | /HX0             |           turn off hexification|
+ |  -> right now    |                              on|
+ +---------------------------------------------------+
+ | /HM1             |          turn on authentication|
+ | /HM0             |         turn off authentication|
+ |  -> right now    |                             off|
+ +---------------------------------------------------+
+ | /PW<32 chars>    |         set password [32 chars]|
+ | /pw              |      [exactly 32] (Uses AES256)|
+ +---------------------------------------------------+
+ | /R1 or /r1       |    turn on PONG back [Reply on]|
+ | /R0 or /r0       |  turn off PONG back [Reply off]|
+ |  -> right now    |                             off|
+ +---------------------------------------------------+
+ | /FQ<float>       |        Set a new LoRa frequency|
+ | Frequency:       |   Between 862 and 1020 MHz (HF)|
+ |  -> right now    |                     868.125 MHz|
+ +---------------------------------------------------+
+ | /SF[7-12]        | Set a new LoRa Spreading Factor|
+ |  -> right now    |                              10|
+ +---------------------------------------------------+
+ | /BW[0-9]         |        Set a new LoRa Bandwidth|
+ |                  |   From 0: 7.8 KHz to 9: 500 KHz|
+ |  -> right now    |                         250.000|
+ +---------------------------------------------------+
+ | /CR[5-8]         |           Set a new Coding Rate|
+ |  -> right now    |                               5|
+ +---------------------------------------------------+
+ | /TX[7-17]        |              Set a new Tx Power|
+ |  -> right now    |                              20|
+ +---------------------------------------------------+
+ | /OC1 or /oc1     |                turn on OCP Trim|
+ | /OC0 or /oc0     |               turn off OCP Trim|
+ |  -> right now    |                             off|
+ +---------------------------------------------------+
+ | /PB1 or /pb1     |                turn on PA_BOOST|
+ | /pb0 or /pb0     |               turn off PA_BOOST|
+ |  -> right now    |                              on|
+ +---------------------------------------------------+
+ | /P or /p         |                Send PING packet|
+ +==================+================================+
+ | Anything else    | show this help message.        |
+ +==================+================================+
+```
 
 There is an optional PONG back function – which I use to do distance tests. I have a BastWAN on a Keyboard FeatherWing, and I send regularly small messages. If the BastWAN at home receives the message, and the pongback option is on, it will send back a message with its device name and the RSSI. Good enough when you are doing a quick test.
 
 Problems start to crop up when you have several devices listening and ponging back – then some PONGs may be lost, and even if not, only the last one will be shown, as the previous ones will be erased. I plan to remedy to this by creating a message queue, which will store the messages, and in the incoming window, will show a list from which you can choose which message to display. TODO!
 
-The hex-encoded string below the pongback is the original pongback message, displayed for debug purposes. It'll go the way of the dodo soon.
+In the hex-encoded string below, the pongback is the original pongback message, displayed for debug purposes. It'll go the way of the dodo soon.
+
+On the subject of hex-encoded strings, I have done away with it – or more accurately made it an option. See below the 2021/06/10 update. This explains the `HX` command above in the help menu. I also added HMAC message authentication. See same update, and th `HX` command above.
 
 # IMPORTANT
 
@@ -186,5 +247,6 @@ Good enough!
 ![Yagi_6.06](Yagi_6.06.jpg)
 See? 6.06 km. Well it says 6.03 here, but I went a little further out. No Line of Sight. Godzilla buildings everywhere!
 
-So now I need to buy a new Yagi, in 800-924 MHz, so that I can try it with the BastWAN series. Too bad the RAK4260 doesn't exist in 433...
+So now I need to buy a new Yagi, in 800-924 MHz, so that I can try it with the BastWAN series. Too bad the RAK4260 doesn't exist in 433... I could have played with just the one antenna (and performance is better in that range anyway...)
 
+![868MHZ_Yagi](868MHZ_Yagi.jpg)
