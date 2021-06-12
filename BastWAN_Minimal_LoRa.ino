@@ -390,6 +390,9 @@ void displayBME680() {
     double temp = bme680.readTemperature();
     double pres = bme680.readPressure();
     double hum = bme680.readHumidity();
+    // save the values in the same global array, so that they can be sent in packets
+    temp_hum_val[0] = (float)hum;
+    temp_hum_val[1] = (float)temp;
     if (NEED_DEBUG == 1) {
       SerialUSB.print("result: T=");
       SerialUSB.print(temp);

@@ -643,6 +643,10 @@ void sendPing() {
   // Lat/Long are hard-coded for the moment
   doc["lat"] = homeLatitude;
   doc["long"] = homeLongitude;
+#ifdef NEED_DHT || NEED_BMP
+  doc["H"] = temp_hum_val[0];
+  doc["T"] = temp_hum_val[1];
+#endif
 
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
@@ -663,7 +667,7 @@ void sendPong(char *msgID, int rssi) {
   doc["cmd"] = "pong";
   doc["from"] = deviceName;
   doc["rcvRSSI"] = rssi;
-#ifdef NEED_DHT
+#ifdef NEED_DHT || NEED_BMP
   doc["H"] = temp_hum_val[0];
   doc["T"] = temp_hum_val[1];
 #endif
