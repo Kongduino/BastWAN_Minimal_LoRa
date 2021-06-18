@@ -424,7 +424,7 @@ void loop() {
       if (mydata.isNull()) {
         if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['sf']) is null!");
       } else {
-        int bw = mydata.as<int>();
+        int sf = mydata.as<int>();
         if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['sf']) = " + String(sf));
         if (sf < 7 || sf > 12) {
           if (NEED_DEBUG == 1) {
