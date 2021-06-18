@@ -60,9 +60,9 @@ uint8_t randomIndex = 0;
 float lastBattery = 0.0;
 double batteryUpdateDelay;
 char deviceName[33];
-uint32_t myFreq = 864125000;
+uint32_t myFreq = 868125000;
 int mySF = 10;
-uint8_t myBW = 8;
+uint8_t myBW = 7;
 uint8_t myCR = 5;
 double BWs[10] = {
   7.8, 10.4, 15.6, 20.8, 31.25,

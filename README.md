@@ -237,9 +237,9 @@ Here is a PING / PONG test, non-hexified, in two parts. Everything works smoothl
 
 *Ref:* [this Twitter thread](https://twitter.com/Kongduino/status/1402420169826127872).
 
-### Yagi
+### Yagi (Warning! not BastWAN related! _YET!_)
 
-I bought a Yagi antenna, after a long period of hesitation – not about the Yagi itself, I knew it would be nice, but because I wondered where to put it. Turns out, I have a rooftop, and the parasol is the (almost) perfect stand for the Yagi. Because it's a 433 MHz (which turns out to be an almost perfectly tuned for 468, but AAAANYWAY), I tried it on a TTGO LoRa OLED, sending a PING packet every minute, with a T-beam serving as a receiver, coupled to my Android phone with a custom mapping app.
+I bought a 433 MHz Yagi antenna, after a long period of hesitation – not about the Yagi itself, I knew it would be nice, but because I wondered where to put it. Turns out, I now have a rooftop, and the parasol is the (almost) perfect stand for the Yagi. Because it's a 433 MHz (although it turns out to be almost perfectly tuned for 468 MHz, but AAAANYWAY), I tried it on a TTGO LoRa OLED, sending a PING packet every minute, with a T-beam serving as a receiver, coupled to my Android phone with a custom mapping app.
 
 ![Yagi_Stand](Yagi_Stand.jpg)
 Good enough!
@@ -247,6 +247,11 @@ Good enough!
 ![Yagi_6.06](Yagi_6.06.jpg)
 See? 6.06 km. Well it says 6.03 here, but I went a little further out. No Line of Sight. Godzilla buildings everywhere!
 
-So now I need to buy a new Yagi, in 800-924 MHz, so that I can try it with the BastWAN series. Too bad the RAK4260 doesn't exist in 433... I could have played with just the one antenna (and performance is better in that range anyway...)
+![10km_Yagi](10km_Yagi.png)
+And of course I had to go and beat that by a wide margin 2 days later... It's a little less conclusive, in the sense that I had to hunt (under a harsh sun and debilitating heat, someone should pay me to do this, oh wait...) for a good location to receive the PING from home. Whereas above in the 6-km test, I had constant reception, with barely a missed packet. This is probably because the hood I went down to, TM, is nested in a narrow corridor between mountains, and the buildings density is to great to allow good reception. While TM is less populated than mine, and both consist of Godzilla buildings, mine is quite airy, with wide open space between buildings. In TM, everything is packed together, with absolutely no empty spaces, save for the big roads. So I found an overpass, over a large road, pointing towards my home, and lo and behold, I received pings constantly.
+
+![Overpass](Overpass.jpg)
+
+So now I need to buy a new Yagi, in 800-924 MHz, so that I can try it with the BastWAN series. Too bad the RAK4260 doesn't exist in 433... I could have played with just the one antenna (and performance is better in that range anyway...) I might also get 
 
 ![868MHZ_Yagi](868MHZ_Yagi.jpg)

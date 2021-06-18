@@ -62,7 +62,6 @@ double lastReading = DHT_PING_DELAY * -1;
 float temp_hum_val[2] = {0};
 #endif
 
-
 #include "helper.h"
 #include "haversine.h"
 #include "SerialCommands.h"
@@ -200,7 +199,7 @@ void setup() {
 #ifdef Pavel
   setDeviceName("Pavel");
 #else
-  setDeviceName("Simon");
+  setDeviceName("Pablo");
 #endif
 #ifdef NEED_DHT
   dht.begin();
@@ -216,7 +215,7 @@ void loop() {
   }
 #endif
 #ifdef NEED_DHT
-  if (t0 - lastReading >= BME_PING_DELAY) {
+  if (t0 - lastReading >= DHT_PING_DELAY) {
     displayDHT();
     lastReading = millis();
   }
@@ -340,12 +339,14 @@ void loop() {
       sendPong((char*)myID, rssi);
       LoRa.receive();
     } else if (strcmp(cmd, "freq") == 0) {
-      // Do we have a frequency?
+      // Do we have a frequency change request?
+      if (strcmp(from, "BastMobile") != 0) return;
+      // Not for you, brah
       mydata = doc["freq"];
       if (mydata.isNull()) {
         if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['freq']) is null!");
       } else {
-        float fq = mydata.as<float>() * 1e6;
+        uint32_t fq = mydata.as<float>() * 1e6;
         if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['freq']) = " + String(fq, 3));
         if (fq < 862e6 || fq > 1020e6) {
           if (NEED_DEBUG == 1) {
@@ -363,11 +364,89 @@ void loop() {
           savePrefs();
         }
       }
+    } else if (strcmp(cmd, "bw") == 0) {
+      // Do we have a bandwidth change request?
+      /*
+        Note on SF / BW pairs:
+        Unless you are sending very small packets, all pairs might not work.
+        Here is a table based on empirical results of pairs that work.
+         BW|SF|Y/N
+         --|--|---
+           |9 | Y
+         6 |10| N
+           |11| N
+           |12| N
+         --|--|---
+           |9 | Y
+         7 |10| Y
+           |11| N
+           |12| N
+         --|--|---
+           |9 | Y
+         8 |10| Y
+           |11| Y
+           |12| N
+         --|--|---
+           |9 | Y
+         9 |10| Y
+           |11| Y
+           |12| Y
+      */
+      if (strcmp(from, "BastMobile") != 0) return;
+      // Not for you, brah
+      mydata = doc["bw"];
+      if (mydata.isNull()) {
+        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['bw']) is null!");
+      } else {
+        int bw = mydata.as<int>();
+        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['bw']) = " + String(bw));
+        if (bw < 0 || bw > 9) {
+          if (NEED_DEBUG == 1) {
+            SerialUSB.println("Requested bandwidth (" + String(bw) + ") is invalid!");
+          }
+        } else {
+          myBW = bw;
+          LoRa.idle();
+          LoRa.setSignalBandwidth(BWs[myBW] * 1e3);
+          delay(100);
+          LoRa.receive();
+          if (NEED_DEBUG == 1) {
+            SerialUSB.println("Bandwidth set to " + String(BWs[myBW], 3) + " KHz");
+          }
+          savePrefs();
+        }
+      }
+    } else if (strcmp(cmd, "sf") == 0) {
+      // Do we have a spreading factor change request?
+      if (strcmp(from, "BastMobile") != 0) return;
+      // Not for you, brah
+      mydata = doc["sf"];
+      if (mydata.isNull()) {
+        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['sf']) is null!");
+      } else {
+        int bw = mydata.as<int>();
+        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['sf']) = " + String(sf));
+        if (sf < 7 || sf > 12) {
+          if (NEED_DEBUG == 1) {
+            SerialUSB.println("Requested SF (" + String(sf) + ") is invalid!");
+          }
+        } else {
+          mySF = sf;
+          LoRa.idle();
+          LoRa.setSpreadingFactor(mySF);
+          delay(100);
+          LoRa.receive();
+          if (NEED_DEBUG == 1) {
+            SerialUSB.println("SF set to " + String(sf));
+          }
+          savePrefs();
+        }
+      }
     }
   }
   if (SerialUSB.available()) {
     // When the BastMobile is connected via USB to a computer,
-    // you change make changes to settings via Serial,
+    // you can make changes to settings via Serial,
     // like in BastWAN_Minimal_LoRa
     handleSerial();
   }
@@ -380,7 +459,7 @@ void loop() {
   }
 }
 
-#ifdef Pavel
+#ifdef NEED_BME
 void displayBME680() {
   if (NEED_DEBUG == 1) {
     SerialUSB.println("BME680");
@@ -394,14 +473,8 @@ void displayBME680() {
     temp_hum_val[0] = (float)hum;
     temp_hum_val[1] = (float)temp;
     if (NEED_DEBUG == 1) {
-      SerialUSB.print("result: T=");
-      SerialUSB.print(temp);
-      SerialUSB.print("C, RH=");
-      SerialUSB.print(hum);
-      SerialUSB.print("%, P=");
-      SerialUSB.print(pres);
-      SerialUSB.print(" hPa");
-      SerialUSB.println();
+      sprintf((char*)msgBuf, "result: T = % f C, RH = % f % %, P = % d hPa\n", temp, hum, pres);
+      SerialUSB.println((char*)msgBuf);
     }
     lastReading = millis();
   }
@@ -415,7 +488,7 @@ void displayDHT() {
   if (!dht.readTempAndHumidity(temp_hum_val)) {
     SerialUSB.print("Humidity: ");
     SerialUSB.print(temp_hum_val[0]);
-    SerialUSB.print(" %\t");
+    SerialUSB.print(" % \t");
     SerialUSB.print("Temperature: ");
     SerialUSB.print(temp_hum_val[1]);
     SerialUSB.println(" *C");
@@ -423,5 +496,4 @@ void displayDHT() {
     SerialUSB.println("Failed to get temperature and humidity value.");
   }
 }
-
 #endif
