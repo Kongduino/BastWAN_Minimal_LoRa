@@ -49,7 +49,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 uint8_t myMode = ECB;
 bool needEncryption = true;
-bool needHexification = false;
 bool needAuthentification = true;
 bool pongBack = true;
 bool OCP_ON = false, PA_BOOST = true;
@@ -234,61 +233,38 @@ void sendPacket(char *buff) {
 
 int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
   hexDump(myBuf, olen);
+  // Test the total len vs requirements:
+  // AES: min 16 bytes
+  // HMAC if needed: 28 bytes
+  uint8_t reqLen = 16 + needAuthentification ? 28 : 0;
+  printf("reqLen: %d\n", reqLen);
+  if (olen < reqLen) return -1;
   uint8_t len;
-  if (needHexification) {
-    // Dehex buffer if needed
-    SerialUSB.println("  - Dehexing myBuf to encBuf:");
-    hex2array(myBuf, encBuf, olen);
-    len = olen / 2;
-    if (needAuthentification) {
-      // autenticated on the hexed version
-      // hmac the buffer minus SHA2xx_DIGEST_SIZE
-      // compare with the last SHA2xx_DIGEST_SIZE bytes
-      // if correct, reduce len by SHA2xx_DIGEST_SIZE
-      unsigned char key[20];
-      unsigned char digest[SHA224_DIGEST_SIZE];
-      unsigned char mac0[SHA224_DIGEST_SIZE];
-      unsigned char mac1[SHA224_DIGEST_SIZE];
-      memset(key, 0x0b, 20);// set up key
-      hmac_sha224(key, 20, (unsigned char *)myBuf, olen - SHA224_DIGEST_SIZE * 2, mac0, SHA224_DIGEST_SIZE);
-      hex2array((unsigned char *)myBuf + olen - SHA224_DIGEST_SIZE * 2, mac1, SHA224_DIGEST_SIZE * 2);
-      SerialUSB.println("Calculated HMAC:"); hexDump(mac0, SHA224_DIGEST_SIZE);
-      SerialUSB.println("Provided HMAC:");
-      hexDump((unsigned char *)myBuf + olen - SHA224_DIGEST_SIZE * 2, SHA224_DIGEST_SIZE * 2);
-      hexDump(mac1, SHA224_DIGEST_SIZE);
-      if (memcmp(mac0, mac1, SHA224_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
-      else {
-        SerialUSB.println(" * test failed");
-        // notify we failed
-        return -1;
-      }
+
+  // or just copy over
+  memcpy(encBuf, myBuf, olen);
+  len = olen;
+  if (needAuthentification) {
+    // hmac the buffer minus SHA2xx_DIGEST_SIZE
+    // compare with the last SHA2xx_DIGEST_SIZE bytes
+    // if correct, reduce len by SHA2xx_DIGEST_SIZE
+    unsigned char key[20];
+    unsigned char digest[SHA224_DIGEST_SIZE];
+    unsigned char mac[SHA224_DIGEST_SIZE];
+    memset(key, 0x0b, 20);// set up key
+    SerialUSB.println("Original HMAC:"); hexDump((unsigned char *)encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE);
+    hmac_sha224(key, 20, (unsigned char *)encBuf, len - SHA224_DIGEST_SIZE, mac, SHA224_DIGEST_SIZE);
+    SerialUSB.println("HMAC:"); hexDump(mac, SHA224_DIGEST_SIZE);
+    if (memcmp(mac, encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
+    else {
+      SerialUSB.println(" * test failed");
+      // notify we failed
+      return -1;
     }
-  } else {
-    // or just copy over
-    memcpy(encBuf, myBuf, olen);
-    len = olen;
-    if (needAuthentification) {
-      // hmac the buffer minus SHA2xx_DIGEST_SIZE
-      // compare with the last SHA2xx_DIGEST_SIZE bytes
-      // if correct, reduce len by SHA2xx_DIGEST_SIZE
-      unsigned char key[20];
-      unsigned char digest[SHA224_DIGEST_SIZE];
-      unsigned char mac[SHA224_DIGEST_SIZE];
-      memset(key, 0x0b, 20);// set up key
-      SerialUSB.println("Original HMAC:"); hexDump((unsigned char *)encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE);
-      hmac_sha224(key, 20, (unsigned char *)encBuf, len - SHA224_DIGEST_SIZE, mac, SHA224_DIGEST_SIZE);
-      SerialUSB.println("HMAC:"); hexDump(mac, SHA224_DIGEST_SIZE);
-      if (memcmp(mac, encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
-      else {
-        SerialUSB.println(" * test failed");
-        // notify we failed
-        return -1;
-      }
-      // deduct SHA224_DIGEST_SIZE from length
-      len -= SHA224_DIGEST_SIZE;
-    }
-    hexDump(encBuf, len);
+    // deduct SHA224_DIGEST_SIZE from length
+    len -= SHA224_DIGEST_SIZE;
   }
+  hexDump(encBuf, len);
 
   // hexDump(encBuf, len);
   // SerialUSB.print("  - Decrypting encBuf with SecretKey: ");
@@ -333,16 +309,6 @@ uint16_t encryptECB(uint8_t* myBuf) {
   }
   SerialUSB.println("encBuf:");
   hexDump(encBuf, olen);
-  // needHexification
-  // If it is on (it is/was default in pre-MAC versions)
-  // encBuf is hexified into hexBuf
-  // and olen is doubled.
-  if (needHexification) {
-    array2hex(encBuf, olen, hexBuf);
-    olen *= 2;
-    SerialUSB.println("hexBuf:");
-    hexDump(hexBuf, olen);
-  }
 
   // Now do we have to add a MAC?
   if (needAuthentification) {
@@ -352,31 +318,15 @@ uint16_t encryptECB(uint8_t* myBuf) {
     unsigned char digest[SHA224_DIGEST_SIZE];
     unsigned char mac[SHA224_DIGEST_SIZE];
     memset(key, 0x0b, 20);// set up key
-    if (needHexification) {
-      // authenticate
-      hmac_sha224(key, 20, (unsigned char *)hexBuf, olen, mac, SHA224_DIGEST_SIZE);
-      // hexify the mac to encBuf
-      array2hex(mac, SHA224_DIGEST_SIZE, encBuf);
-      SerialUSB.println("MAC, hexified:");
-      hexDump(encBuf, SHA224_DIGEST_SIZE * 2);
-      // copy encBuf at the back of hexBuf
-      // OF COURSE IT'D BE NICE TO CHECK THAT OLEN+SHA224_DIGEST_SIZE*2 DOESN'T BLOW UP THE BUFFER
-      memcpy((unsigned char*)hexBuf + olen, encBuf, SHA224_DIGEST_SIZE * 2);
-      // increase olen
-      olen += SHA224_DIGEST_SIZE * 2;
-      SerialUSB.println("hexBuf with MAC:");
-      hexDump(hexBuf, olen);
-    } else {
-      // authenticate in place
-      // at offset olen
-      // OF COURSE IT'D BE NICE TO CHECK THAT OLEN+SHA224_DIGEST_SIZE DOESN'T BLOW UP THE BUFFER
-      hmac_sha224(key, 20, (unsigned char *)encBuf, olen, (unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
-      SerialUSB.println("MAC, plain [" + String(olen) + "]:");
-      hexDump((unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
-      olen += SHA224_DIGEST_SIZE;
-      SerialUSB.println("encBuf with MAC:");
-      hexDump(encBuf, olen);
-    }
+    // authenticate in place
+    // at offset olen
+    // OF COURSE IT'D BE NICE TO CHECK THAT OLEN+SHA224_DIGEST_SIZE DOESN'T BLOW UP THE BUFFER
+    hmac_sha224(key, 20, (unsigned char *)encBuf, olen, (unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
+    SerialUSB.println("MAC, plain [" + String(olen) + "]:");
+    hexDump((unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
+    olen += SHA224_DIGEST_SIZE;
+    SerialUSB.println("encBuf with MAC:");
+    hexDump(encBuf, olen);
   }
   return olen;
 }
@@ -599,10 +549,8 @@ void sendJSONPacket() {
   LoRa.beginPacket();
   if (needEncryption) {
     //LoRa.print((char*)hexBuf);
-    // hexDump(hexBuf, olen);
     // hexDump(encBuf, olen);
-    if (needHexification) LoRa.write(hexBuf, olen);
-    else LoRa.write(encBuf, olen);
+    LoRa.write(encBuf, olen);
   } else {
     //LoRa.print(buff);
     LoRa.write(msgBuf, olen);

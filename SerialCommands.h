@@ -24,15 +24,6 @@ void handleSerial() {
       if (c1 = '1') needEncryption = true;
       if (c1 = '0') needEncryption = false;
       return;
-    } else if (strcmp((char*)msgBuf, "/HX1") == 0) {
-      needHexification = true;
-      char buff[64];
-      SerialUSB.println("needHexification set to: ON");
-      return;
-    } else if (strcmp((char*)msgBuf, "/HX0") == 0) {
-      needHexification = false;
-      SerialUSB.println("needHexification set to: OFF");
-      return;
     } else if (strcmp((char*)msgBuf, "/HM1") == 0) {
       needAuthentification = true;
       char buff[64];
@@ -97,24 +88,6 @@ void handleSerial() {
         return;
       }
     }
-    //      if (c == 'L') {
-    //        // Backlight on
-    //        LoRa.idle();
-    //        ts.writeRegister8(GPIO_ALT_FUNCT, 0b00001000); // Set GPIO-3 to alternate function
-    //        ts.writeRegister8(GPIO_SET_PIN, 0b00001000);
-    //        SerialUSB.println("--> Backlight ON");
-    //        return;
-    //      }
-    //      if (c == 'l') {
-    //        // Backlight off
-    //        LoRa.idle();
-    //        ts.writeRegister8(GPIO_ALT_FUNCT, 0b00001000); // Set GPIO-3 to alternate function
-    //        ts.writeRegister8(GPIO_CLR_PIN, 0b00001000);
-    //        ts.writeRegister8(GPIO_ALT_FUNCT, 0b00000000); // Set GPIO-3 to alternate function
-    //        ts.writeRegister8(GPIO_CLR_PIN, 0b00001000);
-    //        SerialUSB.println("--> Backlight OFF");
-    //        return;
-    //      }
   } else {
     //SerialUSB.println((char*)msgBuf);
     showHelp();
@@ -142,13 +115,6 @@ void showHelp() {
   sprintf(buff, " |%-18s|%32s|\n", " /E0 or /e0", "turn off encryption");
   SerialUSB.print(buff);
   sprintf(buff, " |%-18s|%32s|\n", "  -> right now", needEncryption ? "on" : "off");
-  SerialUSB.print(buff);
-  SerialUSB.println(" +---------------------------------------------------+");
-  sprintf(buff, " |%-18s|%32s|\n", " /HX1", "turn on hexification");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", " /HX0", "turn off hexification");
-  SerialUSB.print(buff);
-  sprintf(buff, " |%-18s|%32s|\n", "  -> right now", needHexification ? "on" : "off");
   SerialUSB.print(buff);
   SerialUSB.println(" +---------------------------------------------------+");
   sprintf(buff, " |%-18s|%32s|\n", " /HM1", "turn on authentication");
