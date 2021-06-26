@@ -1,4 +1,3 @@
-
 void handleSerial() {
   memset(msgBuf, 0, 256);
   int ix = 0;

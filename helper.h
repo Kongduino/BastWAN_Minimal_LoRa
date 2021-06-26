@@ -75,6 +75,9 @@ float homeLatitude = 22.4591126;
 float homeLongitude = 114.0003769;
 uint8_t TxPower = 20;
 
+// Sets of Freq / SF / BW settings
+StaticJsonDocument<256>sets;
+
 uint16_t encryptECB(uint8_t*);
 int16_t decryptECB(uint8_t*, uint8_t);
 void array2hex(uint8_t *, size_t, uint8_t *, uint8_t);
