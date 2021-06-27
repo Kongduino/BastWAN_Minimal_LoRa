@@ -204,6 +204,23 @@ void setup() {
 #ifdef NEED_DHT
   dht.begin();
 #endif
+  DeserializationError error = deserializeJson(sets, "{\"freq\":[868,868.125,868.125],\"sf\":[12,9,9],\"bw\":[9,8,6]}");
+  if (error) {
+    SerialUSB.println(F("\ndeserializeJson() in SD Prefs failed!"));
+    hexDump(msgBuf, 256);
+  } else {
+    SerialUSB.println(F("\n\nSets:"));
+    setsFQ = sets["freq"];
+    setsSF = sets["sf"];
+    setsBW = sets["bw"];
+    for (uint8_t i = 0; i < setsFQ.size(); i++) {
+      float F = setsFQ[i];
+      int S = setsSF[i];
+      int B = setsBW[i];
+      sprintf((char*)msgBuf, " . Freq: %3.3f MHz, SF %d, BW %d: %3.2f", F, S, B, BWs[B]);
+      SerialUSB.println((char*)msgBuf);
+    }
+  }
 }
 
 void loop() {
@@ -442,19 +459,49 @@ void loop() {
           savePrefs();
         }
       }
+    } else if (strcmp(cmd, "switch") == 0) {
+      // Do we have a spreading factor change request?
+      if (strcmp(from, "BastMobile") != 0) return;
+      // Not for you, brah
+      mydata = doc["set"];
+      if (mydata.isNull()) {
+        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['set']) is null!");
+      } else {
+        int setNum = mydata.as<int>();
+        if (NEED_DEBUG == 1) SerialUSB.println("Switching to set #" + String(setNum));
+        float F = setsFQ[0];
+        int S = setsSF[0];
+        int B = setsBW[0];
+        if (NEED_DEBUG == 1) {
+          sprintf((char*)msgBuf, " . Freq: %3.3f MHz, SF %d, BW %d: %3.2f", F, S, B, BWs[B]);
+          SerialUSB.println((char*)msgBuf);
+        }
+        myFreq = F * 1e6;
+        mySF = S;
+        myBW = B;
+        LoRa.idle();
+        LoRa.setFrequency(myFreq);
+        delay(10);
+        LoRa.setSpreadingFactor(mySF);
+        delay(10);
+        LoRa.setSignalBandwidth(BWs[myBW] * 1e3);
+        delay(10);
+        LoRa.receive();
+        sendPong((char*)myID, rssi);
+      }
     }
-  }
-  if (SerialUSB.available()) {
-    // When the BastMobile is connected via USB to a computer,
-    // you can make changes to settings via Serial,
-    // like in BastWAN_Minimal_LoRa
-    handleSerial();
-  }
-  if (needPing) {
-    double t0 = millis();
-    if (t0 - lastAutoPing > pingFrequency) {
-      sendPing();
-      lastAutoPing = millis();
+    if (SerialUSB.available()) {
+      // When the BastMobile is connected via USB to a computer,
+      // you can make changes to settings via Serial,
+      // like in BastWAN_Minimal_LoRa
+      handleSerial();
+    }
+    if (needPing) {
+      double t0 = millis();
+      if (t0 - lastAutoPing > pingFrequency) {
+        sendPing();
+        lastAutoPing = millis();
+      }
     }
   }
 }

@@ -77,6 +77,7 @@ uint8_t TxPower = 20;
 
 // Sets of Freq / SF / BW settings
 StaticJsonDocument<256>sets;
+JsonArray setsFQ, setsSF, setsBW;
 
 uint16_t encryptECB(uint8_t*);
 int16_t decryptECB(uint8_t*, uint8_t);
