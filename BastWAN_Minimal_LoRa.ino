@@ -48,6 +48,7 @@
 #include "SSD1306AsciiWire.h"
 #define I2C_ADDRESS 0x3C
 #define RST_PIN -1
+#define OLED_FORMAT &Adafruit128x32
 SSD1306AsciiWire oled;
 #endif
 
@@ -110,7 +111,7 @@ void setup() {
 #ifdef NEED_SSD1306
   SerialUSB.println("Setting up OLED");
   // Initialising the UI will init the display too.
-  oled.begin(&Adafruit128x32, I2C_ADDRESS);
+  oled.begin(OLED_FORMAT, I2C_ADDRESS);
   oled.setFont(System5x7);
 #if INCLUDE_SCROLLING == 0
 #error INCLUDE_SCROLLING must be non-zero. Edit SSD1306Ascii.h
