@@ -45,6 +45,7 @@
 
 #ifdef NEED_SSD1306
 #include "SSD1306Ascii.h"
+// Click here to get the library: http://librarymanager/All#SSD1306Ascii
 #include "SSD1306AsciiWire.h"
 #define I2C_ADDRESS 0x3C
 #define RST_PIN -1

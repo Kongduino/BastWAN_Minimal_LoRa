@@ -59,7 +59,7 @@ There are a few commands to be used in the Serial Monitor (or another Terminal).
  |     Command      |         Explanation            |
  +==================+================================+
  |/DN<max 32 chars> |                 Set device name|
- | -> right now     |                      BastMobile|
+ | -> right now     |                           Pablo|
  +==================+================================+
  |/>xxxxxxxxxxx     |         send string xxxxxxxxxxx|
  +==================+================================+
@@ -69,20 +69,16 @@ There are a few commands to be used in the Serial Monitor (or another Terminal).
  | /E0 or /e0       |             turn off encryption|
  |  -> right now    |                              on|
  +---------------------------------------------------+
- | /HX1             |            turn on hexification|
- | /HX0             |           turn off hexification|
- |  -> right now    |                              on|
- +---------------------------------------------------+
  | /HM1             |          turn on authentication|
  | /HM0             |         turn off authentication|
- |  -> right now    |                             off|
+ |  -> right now    |                              on|
  +---------------------------------------------------+
  | /PW<32 chars>    |         set password [32 chars]|
  | /pw              |      [exactly 32] (Uses AES256)|
  +---------------------------------------------------+
  | /R1 or /r1       |    turn on PONG back [Reply on]|
  | /R0 or /r0       |  turn off PONG back [Reply off]|
- |  -> right now    |                             off|
+ |  -> right now    |                              on|
  +---------------------------------------------------+
  | /FQ<float>       |        Set a new LoRa frequency|
  | Frequency:       |   Between 862 and 1020 MHz (HF)|
@@ -93,7 +89,7 @@ There are a few commands to be used in the Serial Monitor (or another Terminal).
  +---------------------------------------------------+
  | /BW[0-9]         |        Set a new LoRa Bandwidth|
  |                  |   From 0: 7.8 KHz to 9: 500 KHz|
- |  -> right now    |                         250.000|
+ |  -> right now    |                         125.000|
  +---------------------------------------------------+
  | /CR[5-8]         |           Set a new Coding Rate|
  |  -> right now    |                               5|
@@ -134,7 +130,7 @@ I am using a customized version of the LoRa library. The change is easy to do bu
   void writeRegister(uint8_t address, uint8_t value);
 ```
 
-The declarations of these 2 functions are private, and need to be moved to public. The code needs access to these functions. And honestly there's no good reason for these 2 functions to be private...
+The declarations of these 2 functions are private, and need to be moved to public. The code needs access to these functions. And honestly there's no good reason for these 2 functions to be private... There was a discussion back when my LoRandom was integrated into Sandeep Mistry's lib, about doing it by default in the lib. Not sure whether it was done.
 
 *Note:* My code [made it](https://github.com/sandeepmistry/arduino-LoRa/pull/395), and then some, to the LoRa library. I'm still using my own code, but you should be safe using the official version. Anyway, yay to me :-)
 
@@ -144,7 +140,7 @@ It is missing some C++ functions, so you need to add the following code to `basi
 
     ~/Library/Arduino15/packages/arduino/tools/arm-none-eabi-gcc/<VERSION>/arm-none-eabi/include/c++/<VERSION>/bits/basic_string.h
 
-Version number may vary. There may be several version together... I really wish these frameworks were unified and we didin't need to have identical copies all over the place...
+Version number may vary. There may be several versions together... I really wish these frameworks were unified and we didin't need to have identical copies all over the place...
 
 ![Versions](Versions.png)
 
@@ -161,6 +157,15 @@ Code:
 ```
 
 *Note:* Putting this in the the .ino file works, but limits the effect to that particular project. Plus/minus. Up to you.
+
+## D_GLIBCXX_USE_C99
+
+You need to add `-D_GLIBCXX_USE_C99` to `compiler.c.flags` & `compiler.cpp.flags` in `/PATH/TO/Arduino15/packages/electroniccats/hardware/samd/<VERSION>/platform.txt`, or the code won't compile.
+
+![D_GLIBCXX_USE_C99_0](D_GLIBCXX_USE_C99_0.png)
+
+![D_GLIBCXX_USE_C99_1](D_GLIBCXX_USE_C99_1.png)
+
 
 ## SparkFun_External_EEPROM.h
 
@@ -255,3 +260,30 @@ And of course I had to go and beat that by a wide margin 2 days later... It's a 
 So now I need to buy a new Yagi, in 800-924 MHz, so that I can try it with the BastWAN series. Too bad the RAK4260 doesn't exist in 433... I could have played with just the one antenna (and performance is better in that range anyway...) I might also get 
 
 ![868MHZ_Yagi](868MHZ_Yagi.jpg)
+
+## UPDATE [2021/07/04]
+
+### SSD1306 OLED
+
+I added code for an SSD1306 OLED. Current code is for a 128x32, but a line can be changed for other formats.
+`#define OLED_FORMAT &Adafruit128x32`
+Change that to something else if need be.
+A lot of stuff is logged to the screen (probably too much) at startup, but after that only the most important events are logged: send ping, received packet, Temperature & Humidity, etc. The define is `NEED_SSD1306`.
+
+### HDC1080
+
+I added a third environment sensor to the choices, an HDC1080. I have a dual HDC1080/CCS811 sensor, but for the moment HDC1080 is enough. So there are 3 defines available: `NEED_BME`, `NEED_DHT`, `NEED_HDC1080`. Note that these are not mutually exclusive – if you want to have all 3, have at it.
+
+### PING_DELAY
+
+The first 2 sensors have each their own define for the delay, now all 3 have the same, `PING_DELAY`.
+
+### Sets
+
+Most of the framework for Sets is in place, need testing now.
+
+### 868 Yagi
+
+As described in [this blog post](https://kongduino.wordpress.com/2021/06/30/and-of-course-i-bought-another-yagi/), I have bought a Yagi for my 868 devices, and it seems to be working quite well: 7.5 km so far, with the yagi (awkwardly) installed indoors.
+
+![Yagi at 7.5 km](Yagi_7_5km.jpg)
