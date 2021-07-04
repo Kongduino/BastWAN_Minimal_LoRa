@@ -189,7 +189,7 @@ Once this is done, you should be able to compile the code without problems.
 
 ## UPDATE [2021/05/23]
 
-I've played around with settings a bit, adding stuff for Pavel, my outdoors BastWAN. Some features are implemented, others WIP. I've added the possibility to add a "HT" sensor: DHT, BME680, HDC1080, should you wish to add environment data to your packets. It was originally for the BastMobile, and I retrofitted it in there.  I am using a DHT22 for the Pavel setup: since it is in a metal enclosure, I want to now how hot it gets in there – it is summer here, and there's lots of sunshine. PONG packets include Temperature & Humidity if a sensor is available. The 3 sensors use the same set of global variables.
+I've played around with settings a bit, adding stuff for Pavel, my outdoors BastWAN. Some features are implemented, others WIP. I've added the possibility to add a "HT" sensor: DHT, BME680, HDC1080, should you wish to add environment data to your packets. It was originally for the BastMobile, and I retrofitted it in there.  I am using a DHT22 for the Pavel setup: since it is in a metal enclosure, I want to know how hot it gets in there – it is summer here, and there's lots of sunshine. PONG packets include Temperature & Humidity if a sensor is available. The 3 sensors use the same set of global variables.
 
 The BastMobile can (and does) save its settings to an SD card. I don't have this on simpler installs like Pavel, but I do have EEPROMs in a drawer, so I am planning to make use of them and add an I2C EEPROM to save and read settings. WIP. See above the `SparkFun_External_EEPROM` note.
 
