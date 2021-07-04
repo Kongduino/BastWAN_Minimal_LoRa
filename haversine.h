@@ -1,6 +1,6 @@
-#include <stdio.h>      /* printf, fgets */
-#include <stdlib.h>     /* atof */
-#include <math.h>       /* sin */
+#include <stdio.h> /* printf, fgets */
+#include <stdlib.h> /* atof */
+#include <math.h> /* sin */
 #include <stdint.h>
 
 float toRad(float x) {

@@ -2,19 +2,24 @@
 //#define Pavel 1
 // Uncomment this next line if you want to use a BME680
 //#define NEED_BME 1
+// Uncomment this next line if you want to use pins 5 & 6 for Gnd/Vcc
+// Particularly useful on a breadboard as they are next to SDA/SCL
+//#define NEED_SIDE_I2C 1
+
 // Uncomment this next line if you want to use a DHT22
 //#define NEED_DHT 1
 // Uncomment this next line if you want to use an SSD1306 OLED
-#define NEED_SSD1306 1
+//#define NEED_SSD1306 1
 // Uncomment this next line if you want to use an HDC1080
-#define NEED_HDC1080 1
+//#define NEED_HDC1080 1
+// Uncomment this next line if you want to use an EEPROM
+//#define NEED_EEPROM
 #include <SPI.h>
+#include <Wire.h>
 #include <LoRa.h>
 #include <LoRandom.h>
 #include "aes.c"
 #include "sha2.c"
-#include "SparkFun_External_EEPROM.h"
-// Click here to get the library: http://librarymanager/All#SparkFun_External_EEPROM
 /*
   NOTE!
   Add:
@@ -34,7 +39,8 @@
 */
 
 /*
-  You need to define the buffer lengths in SparkFun_External_EEPROM.h
+  If you're planning to usee an EEPROM, you need
+  to define the buffer lengths in SparkFun_External_EEPROM.h
   Around line 56:
   #elif defined(_VARIANT_ELECTRONICCATS_BASTWAN_)
   #define I2C_BUFFER_LENGTH_RX SERIAL_BUFFER_SIZE
@@ -51,7 +57,7 @@
 #define RST_PIN -1
 #define OLED_FORMAT &Adafruit128x32
 SSD1306AsciiWire oled;
-#endif
+#endif // NEED_SSD1306
 
 #ifdef NEED_HDC1080
 #include <ClosedCube_HDC1080.h>
@@ -60,19 +66,20 @@ ClosedCube_HDC1080 hdc1080;
 double lastReading = 0;
 float temp_hum_val[2] = {0};
 #define PING_DELAY 300000 // 5 minutes
-#endif
+#endif // NEED_HDC1080
 
 #ifdef NEED_BME
-#include <Wire.h>
 #include "ClosedCube_BME680.h"
 ClosedCube_BME680 bme680;
 double lastReading = 0;
 #define PING_DELAY 300000 // 5 minutes
-#define NEED_SIDE_I2C 1
-// Since other devices later may also need side I2C,
-// let's define it and use it for pins 5/6 Vcc/GND
+#endif // NEED_BME
+
+#ifdef NEED_EEPROM
+#include "SparkFun_External_EEPROM.h"
+// Click here to get the library: http://librarymanager/All#SparkFun_External_EEPROM
 ExternalEEPROM myMem;
-#endif
+#endif // NEED_EEPROM
 
 #ifdef NEED_DHT
 #include "DHT.h"
@@ -82,7 +89,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #define PING_DELAY 300000 // 5 minutes
 double lastReading = 0;
 float p[2] = {0};
-#endif
+#endif // NEED_DHT
 
 #include "helper.h"
 #include "haversine.h"
@@ -103,12 +110,24 @@ float p[2] = {0};
 void setup() {
   // ---- HOUSEKEEPING ----
   SerialUSB.begin(115200);
-  Wire.begin(SDA, SCL);
-  Wire.setClock(100000);
   delay(3000);
   if (NEED_DEBUG == 1) {
     SerialUSB.println("\n\nBastWAN at your service!");
   }
+#ifdef NEED_SIDE_I2C
+  // this has to happen first, if the I2C bus is powered by 5/6
+  if (NEED_DEBUG == 1) {
+    SerialUSB.println(" - Set up I2C");
+  }
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  digitalWrite(5, LOW); // Keyboard Featherwing I2C GND
+  digitalWrite(6, HIGH); // Keyboard Featherwing I2C VCC
+  // And obviously we can't display on the OLED yet...
+#endif // NEED_SIDE_I2C
+
+  Wire.begin(SDA, SCL);
+  Wire.setClock(100000);
 #ifdef NEED_SSD1306
   SerialUSB.println("Setting up OLED");
   // Initialising the UI will init the display too.
@@ -116,30 +135,19 @@ void setup() {
   oled.setFont(System5x7);
 #if INCLUDE_SCROLLING == 0
 #error INCLUDE_SCROLLING must be non-zero. Edit SSD1306Ascii.h
-#endif //  INCLUDE_SCROLLING
+#endif // INCLUDE_SCROLLING
   // Set auto scrolling at end of window.
   oled.setScrollMode(SCROLL_MODE_AUTO);
   oled.println("BastWAN Minimal LoRa");
-#endif
+#endif // NEED_SSD1306
 
-#ifdef NEED_SIDE_I2C
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println(" - Set up I2C");
-  }
-#ifdef NEED_SSD1306
-  oled.println("SIDE_I2C");
-#endif
-  pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
-  digitalWrite(5, LOW); // Keyboard Featherwing I2C GND
-  digitalWrite(6, HIGH); // Keyboard Featherwing I2C VCC
-
+#ifdef NEED_EEPROM
   if (NEED_DEBUG == 1) {
     SerialUSB.println(" - Start EEPROM");
   }
 #ifdef NEED_SSD1306
   oled.println(" . Start EEPROM");
-#endif
+#endif // NEED_SSD1306
   if (myMem.begin() == false) {
     if (NEED_DEBUG == 1) {
       SerialUSB.println("   No memory detected. Freezing.");
@@ -147,7 +155,7 @@ void setup() {
 #ifdef NEED_SSD1306
     oled.println("No memory detected.");
     oled.println("Freezing...");
-#endif
+#endif // NEED_SSD1306
     while (1)
       ;
   }
@@ -160,7 +168,7 @@ void setup() {
     oled.println("Memory detected!");
     oled.println("Size in bytes: ");
     oled.println(myLen);
-#endif
+#endif // NEED_SSD1306
   }
   memset(msgBuf, 0, 97);
   myMem.read(0, msgBuf, 32);
@@ -178,7 +186,7 @@ void setup() {
     }
 #ifdef NEED_SSD1306
     oled.println("JSON prefs fail.");
-#endif
+#endif // NEED_SSD1306
     savePrefs();
   }
   myFreq = doc["myFreq"];
@@ -197,8 +205,8 @@ void setup() {
   oled.println("JSON prefs fail.");
   oled.print("SF: "); oled.println(SF);
   oled.print("BW: "); oled.println(myBW);
-#endif
-#endif
+#endif // NEED_SSD1306
+#endif // NEED_EEPROM
 
 #ifdef NEED_BME
   // ---- BME STUFF ----
@@ -207,7 +215,7 @@ void setup() {
   }
 #ifdef NEED_SSD1306
   oled.println("ClosedCube BME680");
-#endif
+#endif // NEED_SSD1306
   bme680.init(0x77); // I2C address: 0x76 or 0x77
   bme680.reset();
   if (NEED_DEBUG == 1) {
@@ -218,10 +226,11 @@ void setup() {
   bme680.setOversampling(BME680_OVERSAMPLING_X1, BME680_OVERSAMPLING_X2, BME680_OVERSAMPLING_X16);
   bme680.setIIRFilter(BME680_FILTER_3);
   bme680.setForcedMode();
-#endif
+#endif // NEED_BME
+
 #ifdef NEED_SSD1306
   oled.println("LoRa Setup");
-#endif
+#endif // NEED_SSD1306
   pinMode(RFM_TCXO, OUTPUT);
   pinMode(RFM_SWITCH, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -233,43 +242,44 @@ void setup() {
 #ifdef NEED_SSD1306
     oled.println("LoRa init failed!");
     oled.println("Freezing...");
-#endif
+#endif // NEED_SSD1306
     while (1);
   }
+
 #ifdef NEED_SSD1306
   oled.println(" . Random");
-#endif
+#endif // NEED_SSD1306
   stockUpRandom();
   // first fill a 256-byte array with random bytes
 #ifdef NEED_SSD1306
   oled.println(" . Set SF");
-#endif
+#endif // NEED_SSD1306
   LoRa.setSpreadingFactor(mySF);
 #ifdef NEED_SSD1306
   oled.println(" . Set BW");
-#endif
+#endif // NEED_SSD1306
   LoRa.setSignalBandwidth(BWs[myBW] * 1e3);
 #ifdef NEED_SSD1306
   oled.println(" . Set C/R");
-#endif
+#endif // NEED_SSD1306
   LoRa.setCodingRate4(myCR);
 #ifdef NEED_SSD1306
   oled.println(" . Set Preamble");
-#endif
+#endif // NEED_SSD1306
   LoRa.setPreambleLength(8);
 #ifdef NEED_SSD1306
   oled.println(" . Set Tx Power");
-#endif
+#endif // NEED_SSD1306
   LoRa.setTxPower(TxPower, PA_OUTPUT_PA_BOOST_PIN);
   digitalWrite(RFM_SWITCH, HIGH);
 #ifdef NEED_SSD1306
   oled.println(" . Set PA_BOOST");
-#endif
+#endif // NEED_SSD1306
   if (PA_BOOST) LoRa.setTxPower(TxPower, PA_OUTPUT_PA_BOOST_PIN);
   else LoRa.setTxPower(TxPower, 0); // NOT RECOMMENDED!
 #ifdef NEED_SSD1306
   oled.println(" . Set PA_CONFIG");
-#endif
+#endif // NEED_SSD1306
   LoRa.writeRegister(REG_PA_CONFIG, 0b11111111); // That's for the transceiver
   // 0B 1111 1111
   // 1    PA_BOOST pin. Maximum power of +20 dBm
@@ -277,7 +287,7 @@ void setup() {
   // 1111 OutputPower Pout=17-(15-OutputPower) if PaSelect = 1 --> 17
 #ifdef NEED_SSD1306
   oled.println(" . Set PA_DAC");
-#endif
+#endif // NEED_SSD1306
   LoRa.writeRegister(REG_PA_DAC, PA_DAC_HIGH); // That's for the transceiver
   // 0B 1000 0111
   // 00000 RESERVED
@@ -285,7 +295,7 @@ void setup() {
   //  LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
 #ifdef NEED_SSD1306
   oled.println(" . Set REG_OCP");
-#endif
+#endif // NEED_SSD1306
   if (OCP_ON) LoRa.writeRegister(REG_OCP, 0b00111111); // OCP Max 240
   else LoRa.writeRegister(REG_OCP, 0b00011111); // NO OCP
   // 0b 0010 0011
@@ -296,28 +306,29 @@ void setup() {
   LoRa.receive();
 #ifdef NEED_SSD1306
   oled.println(" . Set REG_LNA");
-#endif
+#endif // NEED_SSD1306
   LoRa.writeRegister(REG_LNA, 0x23); // TURN ON LNA FOR RECEIVE
+
 #ifdef Pavel
   setDeviceName("Pavel");
 #else
   setDeviceName("Pablo");
-#endif
+#endif // Pavel
 #ifdef NEED_SSD1306
   oled.println("Device name:"); oled.println(deviceName);
-#endif
+#endif // NEED_SSD1306
 
 #ifdef NEED_DHT
 #ifdef NEED_SSD1306
   oled.println("DHT");
-#endif
+#endif // NEED_SSD1306
   dht.begin();
-#endif
+#endif // NEED_DHT
 
 #ifdef NEED_HDC1080
 #ifdef NEED_SSD1306
   oled.println("HDC1080");
-#endif
+#endif // NEED_SSD1306
   hdc1080.begin(0x40); // I2C address
   SerialUSB.print("Manufacturer ID=0x");
   SerialUSB.println(hdc1080.readManufacturerId(), HEX); // 0x5449 ID of Texas Instruments
@@ -337,17 +348,16 @@ void setup() {
   SerialUSB.println(reg.HumidityMeasurementResolution, HEX);
   SerialUSB.print("TemperatureMeasurementResolution: 0x");
   SerialUSB.println(reg.TemperatureMeasurementResolution, HEX);
-
-#endif
+#endif // NEED_HDC1080
 
 #ifdef NEED_SSD1306
   oled.println("Sets");
-#endif
+#endif // NEED_SSD1306
   DeserializationError error = deserializeJson(sets, "{\"freq\":[868,868.125,868.125],\"sf\":[12,9,9],\"bw\":[9,8,6]}");
   if (error) {
 #ifdef NEED_SSD1306
     oled.println("ndeserializeJson failed");
-#endif
+#endif // NEED_SSD1306
     SerialUSB.println(F("\ndeserializeJson() in Sets failed!"));
     hexDump(msgBuf, 256);
   } else {
@@ -366,22 +376,22 @@ void setup() {
       oled.print("Freq["); oled.print(i); oled.print("]: "); oled.println(String(F, 3) + " MHz");
       oled.print("SF["); oled.print(i); oled.print("]: "); oled.println(S);
       oled.print("BW["); oled.print(i); oled.print("]: "); oled.print(B); oled.print(" ie "); oled.println(BWs[B]);
-#endif
+#endif // NEED_SSD1306
     }
   }
   SerialUSB.println("Setup done...");
 #ifdef NEED_BME
   displayBME680();
   lastReading = millis();
-#endif
+#endif // NEED_BME
 #ifdef NEED_DHT
   displayDHT();
   lastReading = millis();
-#endif
+#endif // NEED_DHT
 #ifdef NEED_HDC1080
   displayHDC1080();
   lastReading = millis();
-#endif
+#endif // NEED_HDC1080
 }
 
 void loop() {
@@ -391,19 +401,19 @@ void loop() {
     displayBME680();
     lastReading = millis();
   }
-#endif
+#endif // NEED_BME
 #ifdef NEED_DHT
   if (t0 - lastReading >= PING_DELAY) {
     displayDHT();
     lastReading = millis();
   }
-#endif
+#endif // NEED_DHT
 #ifdef NEED_HDC1080
   if (t0 - lastReading >= PING_DELAY) {
     displayHDC1080();
     lastReading = millis();
   }
-#endif
+#endif // NEED_HDC1080
 
   // Uncomment if you have a battery plugged in.
   //  if (millis() - batteryUpdateDelay > 10000) {
@@ -414,7 +424,7 @@ void loop() {
   if (packetSize) {
 #ifdef NEED_SSD1306
     oled.print("Incoming! ");
-#endif
+#endif // NEED_SSD1306
     memset(msgBuf, 0xFF, 256);
     int ix = 0;
     while (LoRa.available()) {
@@ -426,7 +436,7 @@ void loop() {
 #ifdef NEED_SSD1306
     oled.print("RSSI: ");
     oled.println(rssi);
-#endif
+#endif // NEED_SSD1306
     if (NEED_DEBUG == 1) {
       SerialUSB.println("Received packet: ");
       hexDump(msgBuf, ix);
@@ -454,7 +464,7 @@ void loop() {
       }
 #ifdef NEED_SSD1306
       oled.print("deserializeJson failed");
-#endif
+#endif // NEED_SSD1306
       return;
     }
 
@@ -476,12 +486,12 @@ void loop() {
     oled.print(from);
     oled.print(": ");
     oled.println(cmd);
-#endif
+#endif // NEED_SSD1306
     if (strcmp(cmd, "msg") == 0) {
       const char *msg = doc["msg"];
 #ifdef NEED_SSD1306
       oled.println(msg);
-#endif
+#endif // NEED_SSD1306
     }
     bool hasLatLong = true;
     float tLat, tLong, tDistance;
@@ -535,7 +545,7 @@ void loop() {
       }
 #ifdef NEED_SSD1306
       oled.print("PONG back! ");
-#endif
+#endif // NEED_SSD1306
       // we cannot pong back right away – the message would be lost
       // if there are other devices on the same network
       uint16_t dl = getRamdom16() % 2800 + 3300;
@@ -554,7 +564,7 @@ void loop() {
 #ifdef NEED_SSD1306
       oled.print("rcvRSSI: ");
       oled.println(rcvRSSI);
-#endif
+#endif // NEED_SSD1306
     } else if (strcmp(cmd, "freq") == 0) {
       // Do we have a frequency change request?
       if (strcmp(from, "BastMobile") != 0) return;
@@ -581,7 +591,7 @@ void loop() {
 #ifdef NEED_SSD1306
           oled.print("New freq: ");
           oled.println(String(myFreq / 1e6, 3) + " MHz");
-#endif
+#endif // NEED_SSD1306
           savePrefs();
         }
       }
@@ -637,7 +647,7 @@ void loop() {
 #ifdef NEED_SSD1306
           oled.print("New BW: ");
           oled.println(String(BWs[myBW], 3) + " KHz");
-#endif
+#endif // NEED_SSD1306
           savePrefs();
         }
       }
@@ -667,7 +677,7 @@ void loop() {
 #ifdef NEED_SSD1306
           oled.print("New SF: ");
           oled.println(mySF);
-#endif
+#endif // NEED_SSD1306
           savePrefs();
         }
       }
@@ -707,7 +717,7 @@ void loop() {
         oled.println(mySF);
         oled.print("New BW: ");
         oled.println(String(BWs[myBW], 3) + " KHz");
-#endif
+#endif // NEED_SSD1306
       }
     }
   }
@@ -722,7 +732,7 @@ void loop() {
     if (t0 - lastAutoPing > pingFrequency) {
 #ifdef NEED_SSD1306
       oled.println("Auto PING!");
-#endif
+#endif // NEED_SSD1306
       sendPing();
       lastAutoPing = millis();
     }
@@ -733,7 +743,7 @@ void loop() {
 void displayBME680() {
 #ifdef NEED_SSD1306
   oled.println("displayBME680");
-#endif
+#endif // NEED_SSD1306
   if (NEED_DEBUG == 1) {
     SerialUSB.println("BME680");
   }
@@ -747,7 +757,7 @@ void displayBME680() {
     temp_hum_val[1] = (float)temp;
 #ifdef NEED_SSD1306
     displayHT();
-#endif
+#endif // NEED_SSD1306
     if (NEED_DEBUG == 1) {
       sprintf((char*)msgBuf, "result: T = % f C, RH = % f % %, P = % d hPa\n", temp, hum, pres);
       SerialUSB.println((char*)msgBuf);
@@ -761,7 +771,7 @@ void displayBME680() {
 void displayDHT() {
 #ifdef NEED_SSD1306
   oled.println("displayDHT");
-#endif
+#endif // NEED_SSD1306
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (it's a very slow sensor)
   if (dht.readTempAndHumidity(temp_hum_val)) {
@@ -773,12 +783,12 @@ void displayDHT() {
     SerialUSB.println(" *C");
 #ifdef NEED_SSD1306
     displayHT();
-#endif
+#endif // NEED_SSD1306
   } else {
     SerialUSB.println("Failed to get temperature and humidity value.");
   }
 }
-#endif
+#endif // NEED_DHT
 
 #ifdef NEED_HDC1080
 void displayHDC1080() {
@@ -789,9 +799,9 @@ void displayHDC1080() {
   Serial.print(buff);
 #ifdef NEED_SSD1306
   displayHT();
-#endif
+#endif // NEED_SSD1306
 }
-#endif
+#endif // NEED_HDC1080
 
 #ifdef NEED_SSD1306
 void displayHT() {
@@ -801,4 +811,4 @@ void displayHT() {
   oled.print(temp_hum_val[1]);
   oled.println(" *C");
 }
-#endif
+#endif // NEED_SSD1306

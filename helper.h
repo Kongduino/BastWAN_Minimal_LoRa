@@ -406,7 +406,7 @@ void setFQ(char* buff) {
 #ifdef NEED_SSD1306
     oled.print("New freq: ");
     oled.println(myFreq);
-#endif
+#endif // NEED_SSD1306
     savePrefs();
   }
 }
@@ -431,7 +431,7 @@ void setSF(char* buff) {
 #ifdef NEED_SSD1306
     oled.print("New SF: ");
     oled.println(mySF);
-#endif
+#endif // NEED_SSD1306
     savePrefs();
   }
 }
@@ -475,7 +475,7 @@ void setCR(char* buff) {
 #ifdef NEED_SSD1306
     oled.print("New C/R: 4/");
     oled.println(myCR);
-#endif
+#endif // NEED_SSD1306
     savePrefs();
   }
 }
@@ -515,7 +515,7 @@ void setBW(char* buff) {
     oled.print(" ie ");
     oled.print(BWs[myBW]);
     oled.println(" KHz");
-#endif
+#endif // NEED_SSD1306
     savePrefs();
   }
 }
@@ -614,10 +614,10 @@ void sendPing() {
   // Lat/Long are hard-coded for the moment
   doc["lat"] = homeLatitude;
   doc["long"] = homeLongitude;
-#ifdef NEED_DHT || NEED_BMP
+#ifdef NEED_DHT || NEED_BMP || NEED_HDC1080
   doc["H"] = temp_hum_val[0];
   doc["T"] = temp_hum_val[1];
-#endif
+#endif // NEED_DHT || NEED_BME || NEED_HDC1080
 
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
@@ -626,7 +626,7 @@ void sendPing() {
   }
 #ifdef NEED_SSD1306
   oled.println("PING sent!");
-#endif
+#endif // NEED_SSD1306
   delay(1000);
 }
 
@@ -641,10 +641,10 @@ void sendPong(char *msgID, int rssi) {
   doc["cmd"] = "pong";
   doc["from"] = deviceName;
   doc["rcvRSSI"] = rssi;
-#ifdef NEED_DHT || NEED_BMP
+#ifdef NEED_DHT || NEED_BMP || NEED_HDC1080
   doc["H"] = temp_hum_val[0];
   doc["T"] = temp_hum_val[1];
-#endif
+#endif // NEED_DHT || NEED_BME || NEED_HDC1080
   //  char freq[8];
   //  snprintf( freq, 8, "%f", float(myFreq / 1e6) );
   //  doc["freq"] = freq;
@@ -655,7 +655,7 @@ void sendPong(char *msgID, int rssi) {
   }
 #ifdef NEED_SSD1306
   oled.println("PONG sent!");
-#endif
+#endif // NEED_SSD1306
   delay(1000);
 }
 
