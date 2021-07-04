@@ -534,10 +534,11 @@ void loop() {
         SerialUSB.println("Pong back:");
       }
 #ifdef NEED_SSD1306
-      oled.println("PONG back");
+      oled.print("PONG back! ");
 #endif
-      // we cannot pong back right away – the message could be lost
-      uint16_t dl = getRamdom16() % 2500 + 800;
+      // we cannot pong back right away – the message would be lost
+      // if there are other devices on the same network
+      uint16_t dl = getRamdom16() % 2800 + 3300;
       if (NEED_DEBUG == 1) {
         SerialUSB.println("Delaying " + String(dl) + " millis...");
       }
