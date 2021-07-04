@@ -13,28 +13,52 @@ void handleSerial() {
     if (c == '>') {
       char buff[256];
       strcpy(buff, (char*)msgBuf + 2);
+#ifdef NEED_SSD1306
+      oled.print("Sending msg...");
+#endif
       prepareJSONPacket(buff);
       sendJSONPacket();
+#ifdef NEED_SSD1306
+      oled.println(" done");
+#endif
       return;
     } else if (c == 'D' && c1 == 'N') {
       setDeviceName((char*)msgBuf + 3);
+#ifdef NEED_SSD1306
+      oled.println("New device name:");
+      oled.println(deviceName);
+#endif
       return;
     } else if (c == 'E' || c == 'e') {
-      if (c1 = '1') needEncryption = true;
-      if (c1 = '0') needEncryption = false;
+      if (c1 == '1') needEncryption = true;
+      if (c1 == '0') needEncryption = false;
+#ifdef NEED_SSD1306
+      oled.print("Encryption ");
+      oled.println(c1 == '1' ? "ON" : "OFF");
+#endif
       return;
     } else if (strcmp((char*)msgBuf, "/HM1") == 0) {
       needAuthentification = true;
       char buff[64];
       SerialUSB.println("needAuthentification set to: ON");
+#ifdef NEED_SSD1306
+      oled.println("HMAC: ON");
+#endif
       return;
     } else if (strcmp((char*)msgBuf, "/HM0") == 0) {
       needAuthentification = false;
       SerialUSB.println("needAuthentification set to: OFF");
+#ifdef NEED_SSD1306
+      oled.println("HMAC: OFF");
+#endif
       return;
     } else if (c == 'R' || c == 'r') {
-      if (c1 = '1') setPongBack(true);
-      if (c1 = '0') setPongBack(false);
+      if (c1 == '1') setPongBack(true);
+      if (c1 == '0') setPongBack(false);
+#ifdef NEED_SSD1306
+      oled.print("PONG back ");
+      oled.println(c1 == '1' ? "ON" : "OFF");
+#endif
       return;
     } else if (c == 'F' && c1 == 'Q') {
       setFQ((char*)msgBuf + 3);

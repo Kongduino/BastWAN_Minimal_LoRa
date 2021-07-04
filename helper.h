@@ -403,6 +403,10 @@ void setFQ(char* buff) {
     if (NEED_DEBUG == 1) {
       SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
     }
+#ifdef NEED_SSD1306
+    oled.print("New freq: ");
+    oled.println(myFreq);
+#endif
     savePrefs();
   }
 }
@@ -424,6 +428,10 @@ void setSF(char* buff) {
     if (NEED_DEBUG == 1) {
       SerialUSB.println("SF set to " + String(mySF));
     }
+#ifdef NEED_SSD1306
+    oled.print("New SF: ");
+    oled.println(mySF);
+#endif
     savePrefs();
   }
 }
@@ -462,8 +470,12 @@ void setCR(char* buff) {
     delay(100);
     LoRa.receive();
     if (NEED_DEBUG == 1) {
-      SerialUSB.println("C/R set to " + String(cr));
+      SerialUSB.println("C/R set to 4/" + String(cr));
     }
+#ifdef NEED_SSD1306
+    oled.print("New C/R: 4/");
+    oled.println(myCR);
+#endif
     savePrefs();
   }
 }
@@ -497,6 +509,13 @@ void setBW(char* buff) {
     if (NEED_DEBUG == 1) {
       SerialUSB.println("BW set to " + String(BWs[myBW])) + " KHz";
     }
+#ifdef NEED_SSD1306
+    oled.print("New BW: ");
+    oled.print(myBW);
+    oled.print(" ie ");
+    oled.print(BWs[myBW]);
+    oled.println(" KHz");
+#endif
     savePrefs();
   }
 }
@@ -605,6 +624,9 @@ void sendPing() {
   if (NEED_DEBUG == 1) {
     SerialUSB.println("PING sent!");
   }
+#ifdef NEED_SSD1306
+  oled.println("PING sent!");
+#endif
   delay(1000);
 }
 
@@ -631,6 +653,9 @@ void sendPong(char *msgID, int rssi) {
   if (NEED_DEBUG == 1) {
     SerialUSB.println("PONG sent!");
   }
+#ifdef NEED_SSD1306
+  oled.println("PONG sent!");
+#endif
   delay(1000);
 }
 
