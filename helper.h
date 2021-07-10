@@ -68,8 +68,14 @@ double BWs[10] = {
   41.7, 62.5, 125.0, 250.0, 500.0
 };
 uint16_t pingCounter = 0;
+#ifdef Pavel
+// enable autoPing for Pavel
+double pingFrequency = 120000;
+bool needPing = true;
+#else
 double pingFrequency = 0;
 bool needPing = false;
+#endif
 double lastAutoPing = 0;
 float homeLatitude = 22.4591126;
 float homeLongitude = 114.0003769;

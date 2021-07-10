@@ -312,7 +312,7 @@ void setup() {
 #ifdef Pavel
   setDeviceName("Pavel");
 #else
-  setDeviceName("Alfred");
+  setDeviceName("Slava");
 #endif // Pavel
 #ifdef NEED_SSD1306
   oled.println("Device name:"); oled.println(deviceName);
