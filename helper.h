@@ -68,7 +68,7 @@ double BWs[10] = {
   41.7, 62.5, 125.0, 250.0, 500.0
 };
 uint16_t pingCounter = 0;
-uint16_t pingFrequency = 0;
+double pingFrequency = 0;
 bool needPing = false;
 double lastAutoPing = 0;
 float homeLatitude = 22.4591126;
@@ -675,7 +675,7 @@ void savePrefs() {
 }
 
 void setAutoPing(char* buff) {
-  uint16_t fq = (uint16_t)(atof(buff) * 1e3);
+  double fq = (double)(atof(buff) * 60e3);
   if (NEED_DEBUG == 1) {
     SerialUSB.print("PING frequency: ");
     SerialUSB.print(buff);
@@ -686,20 +686,25 @@ void setAutoPing(char* buff) {
     if (NEED_DEBUG == 1) {
       SerialUSB.println("Turning auto PING off!");
     }
+#ifdef NEED_SSD1306
+      oled.println("auto PING off!");
+      oled.println((char*)msgBuf + 3);
+#endif // NEED_SSD1306
     needPing = false;
     return;
   }
-  if (fq < 5000 || fq > 60000) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Invalid frequency!");
-    }
-    return;
-  }
+  if (fq < 60000) fq = 60000;
+  if (fq > 600000) fq = 600000;
   if (NEED_DEBUG == 1) {
     SerialUSB.print("Turning auto PING on, every ");
-    SerialUSB.print((uint16_t)fq / 1e3);
-    SerialUSB.println(" seconds.");
+    SerialUSB.print((double)fq / 60e3);
+    SerialUSB.println(" mn");
   }
+#ifdef NEED_SSD1306
+      oled.print("auto PING: ");
+      oled.print((double)fq / 60e3);
+      oled.println(" mn");
+#endif // NEED_SSD1306
   pingFrequency = fq;
   needPing = true;
 }

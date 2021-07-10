@@ -9,9 +9,9 @@
 // Uncomment this next line if you want to use a DHT22
 //#define NEED_DHT 1
 // Uncomment this next line if you want to use an SSD1306 OLED
-//#define NEED_SSD1306 1
+#define NEED_SSD1306 1
 // Uncomment this next line if you want to use an HDC1080
-//#define NEED_HDC1080 1
+#define NEED_HDC1080 1
 // Uncomment this next line if you want to use an EEPROM
 //#define NEED_EEPROM
 #include <SPI.h>
@@ -312,7 +312,7 @@ void setup() {
 #ifdef Pavel
   setDeviceName("Pavel");
 #else
-  setDeviceName("Pablo");
+  setDeviceName("Alfred");
 #endif // Pavel
 #ifdef NEED_SSD1306
   oled.println("Device name:"); oled.println(deviceName);

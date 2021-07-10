@@ -29,6 +29,9 @@ void handleSerial() {
       oled.println(deviceName);
 #endif // NEED_SSD1306
       return;
+    } else if (c == 'A' && c1 == 'P') {
+      setAutoPing((char*)msgBuf + 3);
+      return;
     } else if (c == 'E' || c == 'e') {
       if (c1 == '1') needEncryption = true;
       if (c1 == '0') needEncryption = false;
@@ -200,6 +203,16 @@ void showHelp() {
   sprintf(buff, " |%-18s|%32s|\n", " /pb0 or /pb0", "turn off PA_BOOST");
   SerialUSB.print(buff);
   sprintf(buff, " |%-18s|%32s|\n", "  -> right now", PA_BOOST ? "on" : "off");
+  SerialUSB.print(buff);
+  SerialUSB.println(" +---------------------------------------------------+");
+  sprintf(buff, " |%-18s|%32s|\n", " /AP[0-X]", "Set autoPING OFF (0) or ON");
+  SerialUSB.print(buff);
+  if (!needPing) sprintf(buff, " |%-18s|%32s|\n", "  -> right now", "OFF");
+  else {
+    char np[32];
+    sprintf(np, "ON: %d mn", pingFrequency / 60e3);
+    sprintf(buff, " |%-18s|%32s|\n", "  -> right now", np);
+  }
   SerialUSB.print(buff);
   SerialUSB.println(" +---------------------------------------------------+");
   sprintf(buff, " |%-18s|%32s|\n", " /P or /p", "Send PING packet");
