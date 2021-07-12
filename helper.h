@@ -3,14 +3,12 @@
 #include <string>
 #include <vector>
 
-//#define NEED_DEBUG 1
-
 using namespace std;
 template class basic_string<char>; // https://github.com/esp8266/Arduino/issues/1136
 // Required or the code won't compile!
 namespace std _GLIBCXX_VISIBILITY(default) {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
-//void __throw_bad_alloc() {}
+// void __throw_bad_alloc() {}
 }
 
 /*
@@ -197,10 +195,10 @@ void sendPacket(char *buff) {
   // 4 bytes --> 8 bytes
   uint8_t ix = 0;
   getRandomBytes(encBuf, 4);
-  //  encBuf[ix++] = getRandomByte();
-  //  encBuf[ix++] = getRandomByte();
-  //  encBuf[ix++] = getRandomByte();
-  //  encBuf[ix++] = getRandomByte();
+  // encBuf[ix++] = getRandomByte();
+  // encBuf[ix++] = getRandomByte();
+  // encBuf[ix++] = getRandomByte();
+  // encBuf[ix++] = getRandomByte();
   array2hex(encBuf, 4, hexBuf);
   memcpy(encBuf, hexBuf, 8);
   olen += 8;
@@ -223,18 +221,18 @@ void sendPacket(char *buff) {
 #endif
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
-  //digitalWrite(PIN_PA28, LOW);
+  // digitalWrite(PIN_PA28, LOW);
   digitalWrite(RFM_SWITCH, 0);
   LoRa.beginPacket();
   if (needEncryption) {
-    //LoRa.print((char*)hexBuf);
+    // LoRa.print((char*)hexBuf);
     LoRa.write(hexBuf, olen);
   } else {
     LoRa.write((uint8_t *)buff, olen);
   }
   LoRa.endPacket();
   digitalWrite(RFM_SWITCH, 1);
-  //digitalWrite(PIN_PA28, HIGH);
+  // digitalWrite(PIN_PA28, HIGH);
 #ifdef NEED_DEBUG
   SerialUSB.println(" done!");
 #endif
@@ -299,7 +297,7 @@ int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
   AES_init_ctx(&ctx, SecretKey);
   uint8_t rounds = len / 16, steps = 0;
   for (uint8_t ix = 0; ix < rounds; ix++) {
-    //void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf);
+    // void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf);
     AES_ECB_decrypt(&ctx, (uint8_t*)encBuf + steps);
     steps += 16;
     // encrypts in place, 16 bytes at a time
@@ -322,8 +320,10 @@ uint16_t encryptECB(uint8_t* myBuf) {
       else olen += 16 - (olen % 16);
     }
   }
+  SerialUSB.println("\nolen: " + String(olen) + ", len: " + String(len));
   memset(encBuf, (olen - len), olen);
   memcpy(encBuf, myBuf, len);
+  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
   // SerialUSB.println("myBuf:");
   // hexDump(encBuf, olen);
   encBuf[len] = 0;
@@ -331,6 +331,7 @@ uint16_t encryptECB(uint8_t* myBuf) {
   uint8_t rounds = olen / 16, steps = 0;
   for (uint8_t ix = 0; ix < rounds; ix++) {
     AES_ECB_encrypt(&ctx, encBuf + steps);
+    SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
     // void AES_ECB_decrypt(&ctx, encBuf + steps);
     steps += 16;
     // encrypts in place, 16 bytes at a time
@@ -338,7 +339,8 @@ uint16_t encryptECB(uint8_t* myBuf) {
 #ifdef NEED_DEBUG
   SerialUSB.println("encBuf:");
   hexDump(encBuf, olen);
-#endif //NEED_DEBUG
+#endif // NEED_DEBUG
+  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
 
   // Now do we have to add a MAC?
   if (needAuthentification) {
@@ -351,7 +353,9 @@ uint16_t encryptECB(uint8_t* myBuf) {
     // authenticate in place
     // at offset olen
     // OF COURSE IT'D BE NICE TO CHECK THAT OLEN+SHA224_DIGEST_SIZE DOESN'T BLOW UP THE BUFFER
+    SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
     hmac_sha224(key, 20, (unsigned char *)encBuf, olen, (unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
+    SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
 #ifdef NEED_DEBUG
     SerialUSB.println("MAC, plain [" + String(olen) + "]:");
     hexDump((unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
@@ -361,6 +365,7 @@ uint16_t encryptECB(uint8_t* myBuf) {
     SerialUSB.println("encBuf with MAC:");
     hexDump(encBuf, olen);
 #endif // NEED_DEBUG
+    SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
   }
   return olen;
 }
@@ -570,13 +575,16 @@ void prepareJSONPacket(char *buff) {
   doc["UUID"] = myID;
   doc["cmd"] = "msg";
   doc["msg"] = buff;
-  doc["from"] = deviceName;
+  char x[33];
+  memcpy(x, deviceName, 33);
+  doc["from"] = x;
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
 }
 
 void sendJSONPacket() {
 #ifdef NEED_DEBUG
+  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
   SerialUSB.println("Sending JSON Packet... ");
 #endif
   LoRa.idle();
@@ -595,20 +603,22 @@ void sendJSONPacket() {
 #ifdef NEED_DEBUG
   SerialUSB.println("Sending packet...");
 #endif
+  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
-  //digitalWrite(PIN_PA28, LOW);
+  // digitalWrite(PIN_PA28, LOW);
   digitalWrite(RFM_SWITCH, 0);
   LoRa.beginPacket();
   if (needEncryption) {
-    //LoRa.print((char*)hexBuf);
+    // LoRa.print((char*)hexBuf);
     // hexDump(encBuf, olen);
     LoRa.write(encBuf, olen);
   } else {
-    //LoRa.print(buff);
+    // LoRa.print(buff);
     LoRa.write(msgBuf, olen);
   }
   LoRa.endPacket();
+  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
   /*
     RegRssiValue (0x1B)
     Current RSSI value (dBm)
@@ -617,7 +627,7 @@ void sendJSONPacket() {
     Let's see if it has any meaning
   */
   digitalWrite(RFM_SWITCH, HIGH);
-  //digitalWrite(PIN_PA28, HIGH);
+  // digitalWrite(PIN_PA28, HIGH);
 #ifdef NEED_DEBUG
   SerialUSB.println(" done!");
 #endif
@@ -636,7 +646,10 @@ void sendPing() {
   myID[8] = 0;
   doc["UUID"] = myID;
   doc["cmd"] = "ping";
-  doc["from"] = deviceName;
+  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+  char x[33];
+  memcpy(x, deviceName, 33);
+  doc["from"] = x;
   char freq[8];
   snprintf( freq, 8, "%f", float(myFreq / 1e6) );
   doc["freq"] = freq;
@@ -654,6 +667,7 @@ void sendPing() {
 
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
+  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
 #ifdef NEED_DEBUG
   SerialUSB.println("PING sent!");
 #endif
@@ -672,7 +686,9 @@ void sendPong(char *msgID, int rssi) {
   myID[8] = 0;
   doc["UUID"] = msgID ;
   doc["cmd"] = "pong";
-  doc["from"] = deviceName;
+  char x[33];
+  memcpy(x, deviceName, 33);
+  doc["from"] = x;
   doc["rcvRSSI"] = rssi;
 #if defined(NEED_DHT) || defined(NEED_BME) || defined(NEED_HDC1080)
   doc["H"] = temp_hum_val[0];
@@ -682,9 +698,9 @@ void sendPong(char *msgID, int rssi) {
   doc["C"] = tvoc_co2[1];
 #endif // NEED_CCS811
 #endif // NEED_DHT || NEED_BME || NEED_HDC1080
-  //  char freq[8];
-  //  snprintf( freq, 8, "%f", float(myFreq / 1e6) );
-  //  doc["freq"] = freq;
+  // char freq[8];
+  // snprintf( freq, 8, "%f", float(myFreq / 1e6) );
+  // doc["freq"] = freq;
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
 #ifdef NEED_DEBUG
@@ -697,18 +713,18 @@ void sendPong(char *msgID, int rssi) {
 }
 
 void savePrefs() {
-  //  SerialUSB.println("Saving prefs:");
-  //  StaticJsonDocument<200> doc;
-  //  doc["myFreq"] = myFreq;
-  //  doc["mySF"] = mySF;
-  //  doc["myBW"] = myBW;
-  //  doc["deviceName"] = deviceName;
-  //  memset(msgBuf, 0, 97);
-  //  serializeJson(doc, (char*)msgBuf, 97);
-  //  hexDump(msgBuf, 96);
-  //  myMem.write(0, msgBuf, 32);
-  //  myMem.write(32, msgBuf + 32, 32);
-  //  myMem.write(64, msgBuf + 64, 32);
+  // SerialUSB.println("Saving prefs:");
+  // StaticJsonDocument<200> doc;
+  // doc["myFreq"] = myFreq;
+  // doc["mySF"] = mySF;
+  // doc["myBW"] = myBW;
+  // doc["deviceName"] = deviceName;
+  // memset(msgBuf, 0, 97);
+  // serializeJson(doc, (char*)msgBuf, 97);
+  // hexDump(msgBuf, 96);
+  // myMem.write(0, msgBuf, 32);
+  // myMem.write(32, msgBuf + 32, 32);
+  // myMem.write(64, msgBuf + 64, 32);
 }
 
 void setAutoPing(char* buff) {

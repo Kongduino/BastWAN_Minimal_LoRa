@@ -1,13 +1,17 @@
 // Uncomment the next line if uploading to Pavel
-//#define Pavel 1
+// #define Pavel 1
+// Comment out this lime if you need the silent version:
+// only incoming packets will be displayed in the serial monitor.
+// If something doesn't work you won't know it though, unless
+// you plug in an OLED.
+#define NEED_DEBUG
 // Uncomment this next line if you want to use a BME680
-//#define NEED_BME 1
+// #define NEED_BME 1
 // Uncomment this next line if you want to use pins 5 & 6 for Gnd/Vcc
 // Particularly useful on a breadboard as they are next to SDA/SCL
-//#define NEED_SIDE_I2C 1
-
+// #define NEED_SIDE_I2C 1
 // Uncomment this next line if you want to use a DHT22
-//#define NEED_DHT 1
+// #define NEED_DHT 1
 // Uncomment this next line if you want to use an SSD1306 OLED
 //#define NEED_SSD1306 1
 // Uncomment this next line if you want to use an HDC1080
@@ -15,7 +19,9 @@
 // Uncomment this next line if you want to use an CCS811
 //#define NEED_CCS811 1
 // Uncomment this next line if you want to use an EEPROM
-//#define NEED_EEPROM
+// #define NEED_EEPROM
+#define NEED_SHATEST
+
 #include <SPI.h>
 #include <Wire.h>
 #include <LoRa.h>
@@ -49,11 +55,11 @@
   #define I2C_BUFFER_LENGTH_TX SERIAL_BUFFER_SIZE
 */
 #include "ArduinoJson.h"
-// Click here to get the library: http://librarymanager/All#ArduinoJson
+// Click here to get the library: http:// librarymanager/All#ArduinoJson
 
 #ifdef NEED_SSD1306
 #include "SSD1306Ascii.h"
-// Click here to get the library: http://librarymanager/All#SSD1306Ascii
+// Click here to get the library: http:// librarymanager/All#SSD1306Ascii
 #include "SSD1306AsciiWire.h"
 #define I2C_ADDRESS 0x3C
 #define RST_PIN -1
@@ -87,7 +93,7 @@ double lastReading = 0;
 
 #ifdef NEED_EEPROM
 #include "SparkFun_External_EEPROM.h"
-// Click here to get the library: http://librarymanager/All#SparkFun_External_EEPROM
+// Click here to get the library: http:// librarymanager/All#SparkFun_External_EEPROM
 ExternalEEPROM myMem;
 #endif // NEED_EEPROM
 
@@ -204,6 +210,7 @@ void setup() {
   myBW = doc["myBW"];
   myCR = doc["myCR"];
   const char *x = doc["deviceName"];
+  SerialUSB.println("setDeviceName in NEED_EEPROM");
   setDeviceName(x);
 #ifdef NEED_DEBUG
   SerialUSB.print("FQ: "); SerialUSB.println(myFreq / 1e6);
@@ -302,7 +309,7 @@ void setup() {
   // 0B 1000 0111
   // 00000 RESERVED
   // 111 +20dBm on PA_BOOST when OutputPower=1111
-  //  LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
+  // LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
 #ifdef NEED_SSD1306
   oled.println(" . Set REG_OCP");
 #endif // NEED_SSD1306
@@ -326,7 +333,7 @@ void setup() {
   // 120,000 ms = 2 mn
   bool needPing = true;
 #else
-  setDeviceName("Slavapas");
+  setDeviceName("Slava");
   // enable autoPing for Pavel
   double pingFrequency = 120000;
   // 120,000 ms = 2 mn
@@ -405,7 +412,7 @@ void setup() {
 #ifdef NEED_DEBUG
     SerialUSB.println(F("\ndeserializeJson() in Sets failed!"));
     hexDump(msgBuf, 256);
-#endif //NEED_DEBUG
+#endif // NEED_DEBUG
   } else {
     setsFQ = sets["freq"];
     setsSF = sets["sf"];
@@ -413,7 +420,7 @@ void setup() {
     uint8_t i, j = setsFQ.size();
 #ifdef NEED_DEBUG
     SerialUSB.println("\n\n" + String(j) + " Sets:");
-#endif //NEED_DEBUG
+#endif // NEED_DEBUG
     for (i = 0; i < j; i++) {
       float F = setsFQ[i];
       int S = setsSF[i];
@@ -421,7 +428,7 @@ void setup() {
 #ifdef NEED_DEBUG
       sprintf((char*)msgBuf, " . Freq: %3.3f MHz, SF %d, BW %d: %3.2f", F, S, B, BWs[B]);
       SerialUSB.println((char*)msgBuf);
-#endif //NEED_DEBUG
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
       oled.print("Freq["); oled.print(i); oled.print("]: "); oled.println(String(F, 3) + " MHz");
       oled.print("SF["); oled.print(i); oled.print("]: "); oled.println(S);
@@ -431,7 +438,7 @@ void setup() {
   }
 #ifdef NEED_DEBUG
   SerialUSB.println("Setup done...");
-#endif //NEED_DEBUG
+#endif // NEED_DEBUG
 #ifdef NEED_BME
   displayBME680();
   lastReading = millis();
@@ -444,6 +451,9 @@ void setup() {
   displayHDC1080();
   lastReading = millis();
 #endif // NEED_HDC1080
+#ifdef NEED_SHATEST
+  shaTest();
+#endif // NEED_SHATEST
 }
 
 void loop() {
@@ -468,10 +478,10 @@ void loop() {
 #endif // NEED_HDC1080
 
   // Uncomment if you have a battery plugged in.
-  //  if (millis() - batteryUpdateDelay > 10000) {
-  //    getBattery();
-  //    batteryUpdateDelay = millis();
-  //  }
+  // if (millis() - batteryUpdateDelay > 10000) {
+  // getBattery();
+  // batteryUpdateDelay = millis();
+  // }
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
 #ifdef NEED_SSD1306
@@ -953,3 +963,83 @@ void displayHT() {
 #endif // NEED_CCS811
 }
 #endif // NEED_SSD1306
+
+#ifdef NEED_SHATEST
+void shaTest() {
+  SerialUSB.println("\n\n");
+  const unsigned char message1[] = "{\"UUID\":\"00D60A54\",\"cmd\":\"ping\",\"from\":\"BastMobile\"}";
+  const unsigned char message2[] = "Hi There";
+  unsigned char hash0[] = {
+    0x42, 0x81, 0x88, 0x40, 0xe4, 0x01, 0xca, 0x59,
+    0xfe, 0x1a, 0x02, 0x79, 0x7b, 0x33, 0xe9, 0x66,
+    0x7e, 0x4b, 0x8f, 0x9c, 0x43, 0xa6, 0x82, 0xc2,
+    0xcf, 0xf6, 0x31, 0x88
+  };
+  unsigned char hash1[] = {
+    0x4c, 0x1f, 0xe4, 0xd5, 0x6a, 0xd6, 0x13, 0xfe,
+    0x29, 0x83, 0x3d, 0x3f, 0x2c, 0x10, 0x5e, 0x17,
+    0xe6, 0x6b, 0x52, 0x24, 0xe8, 0xeb, 0x71, 0x46,
+    0x91, 0xbb, 0xbc, 0x6a, 0x60, 0xc2, 0x2d, 0x62
+  };
+  unsigned char hash2[] = {
+    0x89, 0x6f, 0xb1, 0x12, 0x8a, 0xbb, 0xdf, 0x19,
+    0x68, 0x32, 0x10, 0x7c, 0xd4, 0x9d, 0xf3, 0x3f,
+    0x47, 0xb4, 0xb1, 0x16, 0x99, 0x12, 0xba, 0x4f,
+    0x53, 0x68, 0x4b, 0x22
+  };
+  unsigned char hash3[] = {
+    0xb0, 0x34, 0x4c, 0x61, 0xd8, 0xdb, 0x38, 0x53,
+    0x5c, 0xa8, 0xaf, 0xce, 0xaf, 0x0b, 0xf1, 0x2b,
+    0x88, 0x1d, 0xc2, 0x00, 0xc9, 0x83, 0x3d, 0xa7,
+    0x26, 0xe9, 0x37, 0x6c, 0x2e, 0x32, 0xcf, 0xf7
+  };
+  unsigned char key[20];
+  unsigned char digest[SHA512_DIGEST_SIZE];
+  unsigned char mac[SHA512_DIGEST_SIZE];
+
+  SerialUSB.println("\nSHA-224 test");
+
+  sha224(message1, strlen((char *)message1), digest);
+  hexDump(digest, SHA224_DIGEST_SIZE);
+  hexDump(hash0, SHA224_DIGEST_SIZE);
+  if (memcmp(digest, hash0, SHA224_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
+  else SerialUSB.println(" * test failed");
+  SerialUSB.println("\nSHA-256 test");
+
+  sha256(message1, strlen((char *)message1), digest);
+  hexDump(digest, SHA256_DIGEST_SIZE);
+  hexDump(hash1, SHA224_DIGEST_SIZE);
+  if (memcmp(digest, hash1, SHA256_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
+  else SerialUSB.println(" * test failed");
+
+  SerialUSB.println("\nSHA-HMAC test");
+  SerialUSB.println("\nSHA-HMAC-224 test");
+  memset(key, 0x0b, 20);
+  hmac_sha224(key, 20, (unsigned char *) message2, strlen((char*)message2), mac, SHA224_DIGEST_SIZE);
+  hexDump(mac, SHA224_DIGEST_SIZE);
+  hexDump(hash2, SHA224_DIGEST_SIZE);
+  if (memcmp(mac, hash2, SHA224_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
+  else SerialUSB.println(" * test failed");
+
+  SerialUSB.println("\nSHA-HMAC-256 test");
+  memset(key, 0x0b, 20);
+  hmac_sha256(key, 20, (unsigned char *) message2, strlen((char*)message2), mac, SHA256_DIGEST_SIZE);
+  hexDump(mac, SHA256_DIGEST_SIZE);
+  hexDump(hash3, SHA256_DIGEST_SIZE);
+  if (memcmp(mac, hash3, SHA256_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
+  else SerialUSB.println(" * test failed");
+
+  SerialUSB.println("\n\nSpeed Test");
+  double t0, t1;
+  uint16_t i, j = 1000;
+  t0 = millis();
+  for (i = 0; i < j; i++) {
+    memset(key, 0x0b, 20);
+    hmac_sha256(key, 20, (unsigned char *) message2, strlen((char*)message2), mac, SHA256_DIGEST_SIZE);
+  }
+  t1 = millis() - t0;
+  sprintf((char*)msgBuf, "%d iterations of SHA-HMAC-256: %3.1f ms\n", j, t1);
+  SerialUSB.print((char*)msgBuf);
+}
+
+#endif // NEED_SHATEST

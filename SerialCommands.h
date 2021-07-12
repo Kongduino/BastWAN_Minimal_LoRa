@@ -24,6 +24,7 @@ void handleSerial() {
       return;
     } else if (c == 'D' && c1 == 'N') {
       setDeviceName((char*)msgBuf + 3);
+      SerialUSB.println("setDeviceName in /DN");
 #ifdef NEED_SSD1306
       oled.println("New device name:");
       oled.println(deviceName);
@@ -115,7 +116,7 @@ void handleSerial() {
       }
     }
   } else {
-    //SerialUSB.println((char*)msgBuf);
+    // SerialUSB.println((char*)msgBuf);
     showHelp();
   }
 }
@@ -226,56 +227,56 @@ void showHelp() {
   sprintf(buff, " |%-18s|%32s|\n", " NEED_DEBUG", "ON");
 #else
   sprintf(buff, " |%-18s|%32s|\n", " NEED_DEBUG", "OFF");
-#endif // NEED_DEBUG
+#endif
   SerialUSB.print(buff);
 
 #ifdef NEED_EEPROM
   sprintf(buff, " |%-18s|%32s|\n", " NEED_EEPROM", "ON");
 #else
   sprintf(buff, " |%-18s|%32s|\n", " NEED_EEPROM", "OFF");
-#endif // NEED_EEPROM
+#endif
   SerialUSB.print(buff);
 
 #ifdef NEED_SIDE_I2C
   sprintf(buff, " |%-18s|%32s|\n", " NEED_SIDE_I2C", "ON");
 #else
   sprintf(buff, " |%-18s|%32s|\n", " NEED_SIDE_I2C", "OFF");
-#endif // NEED_SIDE_I2C
+#endif
   SerialUSB.print(buff);
 
 #ifdef NEED_SSD1306
   sprintf(buff, " |%-18s|%32s|\n", " NEED_SSD1306", "ON");
 #else
   sprintf(buff, " |%-18s|%32s|\n", " NEED_SSD1306", "OFF");
-#endif // NEED_SSD1306
+#endif
   SerialUSB.print(buff);
 
 #ifdef NEED_DHT
   sprintf(buff, " |%-18s|%32s|\n", " NEED_DHT", "ON");
 #else
   sprintf(buff, " |%-18s|%32s|\n", " NEED_DHT", "OFF");
-#endif // NEED_DHT
+#endif
   SerialUSB.print(buff);
 
 #ifdef NEED_BME
   sprintf(buff, " |%-18s|%32s|\n", " NEED_BME", "ON");
 #else
   sprintf(buff, " |%-18s|%32s|\n", " NEED_BME", "OFF");
-#endif // NEED_BME
+#endif
   SerialUSB.print(buff);
 
 #ifdef NEED_HDC1080
   sprintf(buff, " |%-18s|%32s|\n", " NEED_HDC1080", "ON");
 #else
   sprintf(buff, " |%-18s|%32s|\n", " NEED_HDC1080", "OFF");
-#endif // NEED_HDC1080
+#endif
   SerialUSB.print(buff);
 
 #ifdef NEED_CCS811
   sprintf(buff, " |%-18s|%32s|\n", " NEED_CCS811", "ON");
 #else
   sprintf(buff, " |%-18s|%32s|\n", " NEED_CCS811", "OFF");
-#endif // NEED_CCS811
+#endif
   SerialUSB.print(buff);
   SerialUSB.println(" +==================+================================+");
 }

@@ -332,4 +332,4 @@ As mentioned in the HDC1080 update, the CCS811 had been left alone. This is been
 
 Speaking of `NEED_*` options, they're now displayed in the help menu, see above.
 
-`NEED_DEBUG`, which was an `int` is now a define too.
+`NEED_DEBUG`, which was an `int`, is now a define too.

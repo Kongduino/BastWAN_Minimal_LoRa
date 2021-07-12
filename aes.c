@@ -49,7 +49,7 @@
 
 // jcallan@github points out that declaring Multiply as a function
 // reduces code size considerably with the Keil ARM compiler.
-// See this link for more information: https: //github.com/kokke/tiny-AES-C/pull/3
+// See this link for more information: https: // github.com/kokke/tiny-AES-C/pull/3
 #ifndef MULTIPLY_AS_A_FUNCTION
 #define MULTIPLY_AS_A_FUNCTION 0
 #endif
@@ -64,7 +64,7 @@ typedef uint8_t state_t[4][4];
 // The numbers below can be computed dynamically trading ROM for RAM -
 // This can be useful in (embedded) bootloader applications, where ROM is often limited.
 static const uint8_t sbox[256] = {
-  //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
+  // 0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
   0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
   0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
   0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
@@ -109,9 +109,9 @@ static const uint8_t Rcon[11] = {
 };
 
 /*
-   Jordan Goulder points out in PR #12 (https: //github.com/kokke/tiny-AES-C/pull/12),
+   Jordan Goulder points out in PR #12 (https: // github.com/kokke/tiny-AES-C/pull/12),
    that you can remove most of the elements in the Rcon array, because they are unused.
-   From Wikipedia's article on the Rijndael key schedule @ https: //en.wikipedia.org/wiki/Rijndael_key_schedule#Rcon
+   From Wikipedia's article on the Rijndael key schedule @ https: // en.wikipedia.org/wiki/Rijndael_key_schedule#Rcon
    "Only the first some of these constants are actually used – up to rcon[10] for AES-128 (as 11 round keys are needed),
     up to rcon[8] for AES-192, up to rcon[7] for AES-256. rcon[0] is not used in AES algorithm."
 */
@@ -272,8 +272,8 @@ static void MixColumns(state_t* state) {
 
 // Multiply is used to multiply numbers in the field GF(2^8)
 // Note: The last call to xtime() is unneeded, but often ends up generating a smaller binary
-//       The compiler seems to be able to vectorize the operation better this way.
-//       See https: //github.com/kokke/tiny-AES-c/pull/34
+// The compiler seems to be able to vectorize the operation better this way.
+// See https: // github.com/kokke/tiny-AES-c/pull/34
 #if MULTIPLY_AS_A_FUNCTION
 static uint8_t Multiply(uint8_t x, uint8_t y) {
   return (((y & 1) * x) ^ ((y >> 1 & 1) * xtime(x)) ^ ((y >> 2 & 1) * xtime(xtime(x))) ^ ((y >> 3 & 1) * xtime(xtime(xtime(x)))) ^ ((y >> 4 & 1) * xtime(xtime(xtime(xtime(x))))));
