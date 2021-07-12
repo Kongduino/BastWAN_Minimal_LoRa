@@ -667,10 +667,14 @@ void loop() {
       // Not for you, brah
       mydata = doc["freq"];
       if (mydata.isNull()) {
-        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['freq']) is null!");
+#ifdef NEED_DEBUG
+        SerialUSB.println("mydata (doc['freq']) is null!");
+#endif
       } else {
         uint32_t fq = mydata.as<float>() * 1e6;
-        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['freq']) = " + String(fq, 3));
+#ifdef NEED_DEBUG
+        SerialUSB.println("mydata (doc['freq']) = " + String(fq, 3));
+#endif
         if (fq < 862e6 || fq > 1020e6) {
 #ifdef NEED_DEBUG
           SerialUSB.println("Requested frequency (" + String(fq) + ") is invalid!");
@@ -723,10 +727,14 @@ void loop() {
       // Not for you, brah
       mydata = doc["bw"];
       if (mydata.isNull()) {
-        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['bw']) is null!");
+#ifdef NEED_DEBUG
+        SerialUSB.println("mydata (doc['bw']) is null!");
+#endif
       } else {
         int bw = mydata.as<int>();
-        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['bw']) = " + String(bw));
+#ifdef NEED_DEBUG
+        SerialUSB.println("mydata (doc['bw']) = " + String(bw));
+#endif
         if (bw < 0 || bw > 9) {
 #ifdef NEED_DEBUG
           SerialUSB.println("Requested bandwidth (" + String(bw) + ") is invalid!");
@@ -753,10 +761,14 @@ void loop() {
       // Not for you, brah
       mydata = doc["sf"];
       if (mydata.isNull()) {
-        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['sf']) is null!");
+#ifdef NEED_DEBUG
+        SerialUSB.println("mydata (doc['sf']) is null!");
+#endif
       } else {
         int sf = mydata.as<int>();
-        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['sf']) = " + String(sf));
+#ifdef NEED_DEBUG
+        SerialUSB.println("mydata (doc['sf']) = " + String(sf));
+#endif
         if (sf < 7 || sf > 12) {
 #ifdef NEED_DEBUG
           SerialUSB.println("Requested SF (" + String(sf) + ") is invalid!");
@@ -783,10 +795,14 @@ void loop() {
       // Not for you, brah
       mydata = doc["set"];
       if (mydata.isNull()) {
-        if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['set']) is null!");
+#ifdef NEED_DEBUG
+        SerialUSB.println("mydata (doc['set']) is null!");
+#endif
       } else {
         int setNum = mydata.as<int>();
-        if (NEED_DEBUG == 1) SerialUSB.println("Switching to set #" + String(setNum));
+#ifdef NEED_DEBUG
+        SerialUSB.println("Switching to set #" + String(setNum));
+#endif
         float F = setsFQ[0];
         int S = setsSF[0];
         int B = setsBW[0];

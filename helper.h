@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#define NEED_DEBUG 1
+//#define NEED_DEBUG 1
 
 using namespace std;
 template class basic_string<char>; // https://github.com/esp8266/Arduino/issues/1136
@@ -77,7 +77,7 @@ bool needPing = true;
 #else
 double pingFrequency = 0;
 bool needPing = false;
-#endif // Pavel
+#endif
 
 double lastAutoPing = 0;
 float homeLatitude = 22.4591126;
@@ -167,14 +167,14 @@ void setPWD(char *buff) {
   SerialUSB.print("len: ");
   SerialUSB.println(len);
   hexDump((uint8_t *)buff, len);
-#endif // NEED_DEBUG
+#endif
   if (len == 32) {
     // copy to the SecretKey buffer
     memcpy(SecretKey, buff, 32);
     needEncryption = true;
 #ifdef NEED_DEBUG
     hexDump((uint8_t *)SecretKey, 32);
-#endif // NEED_DEBUG
+#endif
     return;
   }
   if (len == 64) {
@@ -183,7 +183,7 @@ void setPWD(char *buff) {
     needEncryption = true;
 #ifdef NEED_DEBUG
     hexDump((uint8_t *)SecretKey, 32);
-#endif // NEED_DEBUG
+#endif
     return;
   }
 }
@@ -206,11 +206,11 @@ void sendPacket(char *buff) {
   olen += 8;
 #ifdef NEED_DEBUG
   SerialUSB.println("Before calling encryption. olen = " + String(olen));
-#endif // NEED_DEBUG
+#endif
   memcpy(msgBuf, encBuf, olen);
 #ifdef NEED_DEBUG
   hexDump(msgBuf, olen);
-#endif // NEED_DEBUG
+#endif
   if (needEncryption) {
     olen = encryptECB((uint8_t*)msgBuf);
     // encBuff = encrypted buffer
@@ -220,7 +220,7 @@ void sendPacket(char *buff) {
 #ifdef NEED_DEBUG
   SerialUSB.println("olen: " + String(olen));
   SerialUSB.print("Sending packet...");
-#endif // NEED_DEBUG
+#endif
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
   //digitalWrite(PIN_PA28, LOW);
@@ -237,7 +237,7 @@ void sendPacket(char *buff) {
   //digitalWrite(PIN_PA28, HIGH);
 #ifdef NEED_DEBUG
   SerialUSB.println(" done!");
-#endif // NEED_DEBUG
+#endif
   delay(500);
   digitalWrite(LED_BUILTIN, 0);
   LoRa.receive();
@@ -355,7 +355,7 @@ void setPongBack(bool x) {
   SerialUSB.print("PONG back set to ");
   if (x) SerialUSB.println("true");
   else SerialUSB.println("false");
-#endif // NEED_DEBUG
+#endif
 }
 
 uint8_t getRandomByte() {
@@ -390,7 +390,7 @@ void getBattery() {
     // update visually etc.
 #ifdef NEED_DEBUG
     SerialUSB.println("Last Battery: " + String(lastBattery) + " vs current: " + String(battery));
-#endif // NEED_DEBUG
+#endif
     lastBattery = battery;
   }
 }
@@ -402,7 +402,7 @@ void setFQ(char* buff) {
   if (fq < 862e6 || fq > 1020e6) {
 #ifdef NEED_DEBUG
     SerialUSB.println("Requested frequency (" + String(buff) + ") is invalid!");
-#endif // NEED_DEBUG
+#endif
   } else {
     myFreq = fq;
     LoRa.idle();
@@ -411,7 +411,7 @@ void setFQ(char* buff) {
     LoRa.receive();
 #ifdef NEED_DEBUG
     SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
-#endif // NEED_DEBUG
+#endif
 #ifdef NEED_SSD1306
     oled.print("New freq: ");
     oled.println(myFreq);
@@ -427,7 +427,7 @@ void setSF(char* buff) {
   if (sf < 7 || sf > 12) {
 #ifdef NEED_DEBUG
     SerialUSB.println("Requested SF (" + String(buff) + ") is invalid!");
-#endif // NEED_DEBUG
+#endif
   } else {
     mySF = sf;
     LoRa.idle();
@@ -436,7 +436,7 @@ void setSF(char* buff) {
     LoRa.receive();
 #ifdef NEED_DEBUG
     SerialUSB.println("SF set to " + String(mySF));
-#endif // NEED_DEBUG
+#endif
 #ifdef NEED_SSD1306
     oled.print("New SF: ");
     oled.println(mySF);
@@ -450,7 +450,7 @@ void setTxPower(char* buff) {
   if (txp < 7 || txp > 23) {
 #ifdef NEED_DEBUG
     SerialUSB.println("Requested TxPower (" + String(txp) + ") is invalid!");
-#endif // NEED_DEBUG
+#endif
   } else {
     String s = "TxPower set to: " + String(txp);
     TxPower = txp;
@@ -460,7 +460,7 @@ void setTxPower(char* buff) {
     LoRa.receive();
 #ifdef NEED_DEBUG
     SerialUSB.println("TxPower set to " + String(TxPower));
-#endif // NEED_DEBUG
+#endif
   }
 }
 
@@ -470,7 +470,7 @@ void setCR(char* buff) {
   if (cr < 5 || cr > 8) {
 #ifdef NEED_DEBUG
     SerialUSB.println("Requested C/R (" + String(cr) + ") is invalid!");
-#endif // NEED_DEBUG
+#endif
   } else {
     String s = "C/R set to: " + String(cr);
     myCR = cr;
@@ -480,7 +480,7 @@ void setCR(char* buff) {
     LoRa.receive();
 #ifdef NEED_DEBUG
     SerialUSB.println("C/R set to 4/" + String(cr));
-#endif // NEED_DEBUG
+#endif
 #ifdef NEED_SSD1306
     oled.print("New C/R: 4/");
     oled.println(myCR);
@@ -507,7 +507,7 @@ void setBW(char* buff) {
   if (bw < 0 || bw > 9) {
 #ifdef NEED_DEBUG
     SerialUSB.println("Requested BW (" + String(bw) + ") is invalid!");
-#endif // NEED_DEBUG
+#endif
   } else {
     String s = "BW set to: " + String(bw);
     myBW = bw;
@@ -517,7 +517,7 @@ void setBW(char* buff) {
     LoRa.receive();
 #ifdef NEED_DEBUG
     SerialUSB.println("BW set to " + String(BWs[myBW])) + " KHz";
-#endif // NEED_DEBUG
+#endif
 #ifdef NEED_SSD1306
     oled.print("New BW: ");
     oled.print(myBW);
@@ -535,7 +535,7 @@ void setDeviceName(char *truc) {
 #ifdef NEED_DEBUG
   SerialUSB.print("Device Name set to: ");
   SerialUSB.println(deviceName);
-#endif // NEED_DEBUG
+#endif
   savePrefs();
 }
 
@@ -557,14 +557,14 @@ void prepareJSONPacket(char *buff) {
 void sendJSONPacket() {
 #ifdef NEED_DEBUG
   SerialUSB.println("Sending JSON Packet... ");
-#endif // NEED_DEBUG
+#endif
   LoRa.idle();
   LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
   digitalWrite(RFM_SWITCH, LOW);
   uint16_t olen = strlen((char*)msgBuf);
 #ifdef NEED_DEBUG
   hexDump(msgBuf, olen);
-#endif // NEED_DEBUG
+#endif
   if (needEncryption) {
     olen = encryptECB((uint8_t*)msgBuf);
     // encBuff = encrypted buffer
@@ -573,7 +573,7 @@ void sendJSONPacket() {
   } // SerialUSB.println("olen: " + String(olen));
 #ifdef NEED_DEBUG
   SerialUSB.println("Sending packet...");
-#endif // NEED_DEBUG
+#endif
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
   //digitalWrite(PIN_PA28, LOW);
@@ -599,7 +599,7 @@ void sendJSONPacket() {
   //digitalWrite(PIN_PA28, HIGH);
 #ifdef NEED_DEBUG
   SerialUSB.println(" done!");
-#endif // NEED_DEBUG
+#endif
   delay(500);
   digitalWrite(LED_BUILTIN, 0);
   LoRa.receive();
@@ -635,7 +635,7 @@ void sendPing() {
   sendJSONPacket();
 #ifdef NEED_DEBUG
   SerialUSB.println("PING sent!");
-#endif // NEED_DEBUG
+#endif
 #ifdef NEED_SSD1306
   oled.println("PING sent!");
 #endif // NEED_SSD1306
@@ -668,7 +668,7 @@ void sendPong(char *msgID, int rssi) {
   sendJSONPacket();
 #ifdef NEED_DEBUG
   SerialUSB.println("PONG sent!");
-#endif // NEED_DEBUG
+#endif
 #ifdef NEED_SSD1306
   oled.println("PONG sent!");
 #endif // NEED_SSD1306
@@ -697,11 +697,11 @@ void setAutoPing(char* buff) {
   SerialUSB.print(buff);
   SerialUSB.print(" --> ");
   SerialUSB.println(fq);
-#endif // NEED_DEBUG
+#endif
   if (fq == 0) {
 #ifdef NEED_DEBUG
     SerialUSB.println("Turning auto PING off!");
-#endif // NEED_DEBUG
+#endif
 #ifdef NEED_SSD1306
     oled.println("auto PING off!");
     oled.println((char*)msgBuf + 3);
@@ -715,7 +715,7 @@ void setAutoPing(char* buff) {
   SerialUSB.print("Turning auto PING on, every ");
   SerialUSB.print((double)fq / 60e3);
   SerialUSB.println(" mn");
-#endif // NEED_DEBUG
+#endif
 #ifdef NEED_SSD1306
   oled.print("auto PING: ");
   oled.print((double)fq / 60e3);
