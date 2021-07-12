@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-uint8_t NEED_DEBUG = 1;
+#define NEED_DEBUG 1
 
 using namespace std;
 template class basic_string<char>; // https://github.com/esp8266/Arduino/issues/1136
@@ -68,14 +68,17 @@ double BWs[10] = {
   41.7, 62.5, 125.0, 250.0, 500.0
 };
 uint16_t pingCounter = 0;
+
 #ifdef Pavel
 // enable autoPing for Pavel
 double pingFrequency = 120000;
+// 120,000 ms = 2 mn
 bool needPing = true;
 #else
 double pingFrequency = 0;
 bool needPing = false;
-#endif
+#endif // Pavel
+
 double lastAutoPing = 0;
 float homeLatitude = 22.4591126;
 float homeLongitude = 114.0003769;
@@ -158,29 +161,29 @@ void setPWD(char *buff) {
     }
   }
   len = strlen(buff);
-  if (NEED_DEBUG == 1) {
-    SerialUSB.print("setPWD: ");
-    SerialUSB.println(buff);
-    SerialUSB.print("len: ");
-    SerialUSB.println(len);
-    hexDump((uint8_t *)buff, len);
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.print("setPWD: ");
+  SerialUSB.println(buff);
+  SerialUSB.print("len: ");
+  SerialUSB.println(len);
+  hexDump((uint8_t *)buff, len);
+#endif // NEED_DEBUG
   if (len == 32) {
     // copy to the SecretKey buffer
     memcpy(SecretKey, buff, 32);
     needEncryption = true;
-    if (NEED_DEBUG == 1) {
-      hexDump((uint8_t *)SecretKey, 32);
-    }
+#ifdef NEED_DEBUG
+    hexDump((uint8_t *)SecretKey, 32);
+#endif // NEED_DEBUG
     return;
   }
   if (len == 64) {
     // copy to the SecretKey buffer
     hex2array((uint8_t *)buff, SecretKey, 64);
     needEncryption = true;
-    if (NEED_DEBUG == 1) {
-      hexDump((uint8_t *)SecretKey, 32);
-    }
+#ifdef NEED_DEBUG
+    hexDump((uint8_t *)SecretKey, 32);
+#endif // NEED_DEBUG
     return;
   }
 }
@@ -201,23 +204,23 @@ void sendPacket(char *buff) {
   array2hex(encBuf, 4, hexBuf);
   memcpy(encBuf, hexBuf, 8);
   olen += 8;
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("Before calling encryption. olen = " + String(olen));
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println("Before calling encryption. olen = " + String(olen));
+#endif // NEED_DEBUG
   memcpy(msgBuf, encBuf, olen);
-  if (NEED_DEBUG == 1) {
-    hexDump(msgBuf, olen);
-  }
+#ifdef NEED_DEBUG
+  hexDump(msgBuf, olen);
+#endif // NEED_DEBUG
   if (needEncryption) {
     olen = encryptECB((uint8_t*)msgBuf);
     // encBuff = encrypted buffer
     // hexBuff = encBuf, hex encoded
     // olen = len(hexBuf)
   }
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("olen: " + String(olen));
-    SerialUSB.print("Sending packet...");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println("olen: " + String(olen));
+  SerialUSB.print("Sending packet...");
+#endif // NEED_DEBUG
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
   //digitalWrite(PIN_PA28, LOW);
@@ -232,9 +235,9 @@ void sendPacket(char *buff) {
   LoRa.endPacket();
   digitalWrite(RFM_SWITCH, 1);
   //digitalWrite(PIN_PA28, HIGH);
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println(" done!");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println(" done!");
+#endif // NEED_DEBUG
   delay(500);
   digitalWrite(LED_BUILTIN, 0);
   LoRa.receive();
@@ -348,11 +351,11 @@ void stockUpRandom() {
 
 void setPongBack(bool x) {
   pongBack = x;
-  if (NEED_DEBUG == 1) {
-    SerialUSB.print("PONG back set to ");
-    if (x) SerialUSB.println("true");
-    else SerialUSB.println("false");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.print("PONG back set to ");
+  if (x) SerialUSB.println("true");
+  else SerialUSB.println("false");
+#endif // NEED_DEBUG
 }
 
 uint8_t getRandomByte() {
@@ -385,9 +388,9 @@ void getBattery() {
   float battery = analogRead(A0);
   if (battery != lastBattery) {
     // update visually etc.
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Last Battery: " + String(lastBattery) + " vs current: " + String(battery));
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Last Battery: " + String(lastBattery) + " vs current: " + String(battery));
+#endif // NEED_DEBUG
     lastBattery = battery;
   }
 }
@@ -397,18 +400,18 @@ void setFQ(char* buff) {
   // RAK4260: 862 to 1020 MHz frequency coverage
   // clearFrame();
   if (fq < 862e6 || fq > 1020e6) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Requested frequency (" + String(buff) + ") is invalid!");
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Requested frequency (" + String(buff) + ") is invalid!");
+#endif // NEED_DEBUG
   } else {
     myFreq = fq;
     LoRa.idle();
     LoRa.setFrequency(myFreq);
     delay(100);
     LoRa.receive();
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
     oled.print("New freq: ");
     oled.println(myFreq);
@@ -422,18 +425,18 @@ void setSF(char* buff) {
   // SF 7 to 12
   // clearFrame();
   if (sf < 7 || sf > 12) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Requested SF (" + String(buff) + ") is invalid!");
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Requested SF (" + String(buff) + ") is invalid!");
+#endif // NEED_DEBUG
   } else {
     mySF = sf;
     LoRa.idle();
     LoRa.setSpreadingFactor(mySF);
     delay(100);
     LoRa.receive();
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("SF set to " + String(mySF));
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("SF set to " + String(mySF));
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
     oled.print("New SF: ");
     oled.println(mySF);
@@ -445,9 +448,9 @@ void setSF(char* buff) {
 void setTxPower(char* buff) {
   int txp = atoi(buff);
   if (txp < 7 || txp > 23) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Requested TxPower (" + String(txp) + ") is invalid!");
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Requested TxPower (" + String(txp) + ") is invalid!");
+#endif // NEED_DEBUG
   } else {
     String s = "TxPower set to: " + String(txp);
     TxPower = txp;
@@ -455,9 +458,9 @@ void setTxPower(char* buff) {
     LoRa.setTxPower(TxPower);
     delay(100);
     LoRa.receive();
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("TxPower set to " + String(TxPower));
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("TxPower set to " + String(TxPower));
+#endif // NEED_DEBUG
   }
 }
 
@@ -465,9 +468,9 @@ void setCR(char* buff) {
   int cr = atoi(buff);
   // clearFrame();
   if (cr < 5 || cr > 8) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Requested C/R (" + String(cr) + ") is invalid!");
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Requested C/R (" + String(cr) + ") is invalid!");
+#endif // NEED_DEBUG
   } else {
     String s = "C/R set to: " + String(cr);
     myCR = cr;
@@ -475,9 +478,9 @@ void setCR(char* buff) {
     LoRa.setCodingRate4(cr);
     delay(100);
     LoRa.receive();
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("C/R set to 4/" + String(cr));
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("C/R set to 4/" + String(cr));
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
     oled.print("New C/R: 4/");
     oled.println(myCR);
@@ -502,9 +505,9 @@ void setBW(char* buff) {
   */
   // clearFrame();
   if (bw < 0 || bw > 9) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Requested BW (" + String(bw) + ") is invalid!");
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Requested BW (" + String(bw) + ") is invalid!");
+#endif // NEED_DEBUG
   } else {
     String s = "BW set to: " + String(bw);
     myBW = bw;
@@ -512,9 +515,9 @@ void setBW(char* buff) {
     LoRa.setSignalBandwidth(BWs[myBW] * 1e3);
     delay(100);
     LoRa.receive();
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("BW set to " + String(BWs[myBW])) + " KHz";
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("BW set to " + String(BWs[myBW])) + " KHz";
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
     oled.print("New BW: ");
     oled.print(myBW);
@@ -529,10 +532,10 @@ void setBW(char* buff) {
 void setDeviceName(char *truc) {
   memset(deviceName, 0, 33);
   memcpy(deviceName, truc, strlen(truc));
-  if (NEED_DEBUG == 1) {
-    SerialUSB.print("Device Name set to: ");
-    SerialUSB.println(deviceName);
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.print("Device Name set to: ");
+  SerialUSB.println(deviceName);
+#endif // NEED_DEBUG
   savePrefs();
 }
 
@@ -552,25 +555,25 @@ void prepareJSONPacket(char *buff) {
 }
 
 void sendJSONPacket() {
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("Sending JSON Packet... ");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println("Sending JSON Packet... ");
+#endif // NEED_DEBUG
   LoRa.idle();
   LoRa.writeRegister(REG_LNA, 00); // TURN OFF LNA FOR TRANSMIT
   digitalWrite(RFM_SWITCH, LOW);
   uint16_t olen = strlen((char*)msgBuf);
-  if (NEED_DEBUG == 1) {
-    hexDump(msgBuf, olen);
-  }
+#ifdef NEED_DEBUG
+  hexDump(msgBuf, olen);
+#endif // NEED_DEBUG
   if (needEncryption) {
     olen = encryptECB((uint8_t*)msgBuf);
     // encBuff = encrypted buffer
     // hexBuff = encBuf, hex encoded
     // olen = len(hexBuf)
   } // SerialUSB.println("olen: " + String(olen));
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("Sending packet...");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println("Sending packet...");
+#endif // NEED_DEBUG
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
   //digitalWrite(PIN_PA28, LOW);
@@ -594,9 +597,9 @@ void sendJSONPacket() {
   */
   digitalWrite(RFM_SWITCH, HIGH);
   //digitalWrite(PIN_PA28, HIGH);
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println(" done!");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println(" done!");
+#endif // NEED_DEBUG
   delay(500);
   digitalWrite(LED_BUILTIN, 0);
   LoRa.receive();
@@ -616,20 +619,23 @@ void sendPing() {
   char freq[8];
   snprintf( freq, 8, "%f", float(myFreq / 1e6) );
   doc["freq"] = freq;
-
   // Lat/Long are hard-coded for the moment
   doc["lat"] = homeLatitude;
   doc["long"] = homeLongitude;
-#ifdef NEED_DHT || NEED_BMP || NEED_HDC1080
+#if defined(NEED_DHT) || defined(NEED_BME) || defined(NEED_HDC1080)
   doc["H"] = temp_hum_val[0];
   doc["T"] = temp_hum_val[1];
+#ifdef NEED_CCS811
+  doc["V"] = tvoc_co2[0];
+  doc["C"] = tvoc_co2[1];
+#endif // NEED_CCS811
 #endif // NEED_DHT || NEED_BME || NEED_HDC1080
 
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("PING sent!");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println("PING sent!");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
   oled.println("PING sent!");
 #endif // NEED_SSD1306
@@ -647,18 +653,22 @@ void sendPong(char *msgID, int rssi) {
   doc["cmd"] = "pong";
   doc["from"] = deviceName;
   doc["rcvRSSI"] = rssi;
-#ifdef NEED_DHT || NEED_BMP || NEED_HDC1080
+#if defined(NEED_DHT) || defined(NEED_BME) || defined(NEED_HDC1080)
   doc["H"] = temp_hum_val[0];
   doc["T"] = temp_hum_val[1];
+#ifdef NEED_CCS811
+  doc["V"] = tvoc_co2[0];
+  doc["C"] = tvoc_co2[1];
+#endif // NEED_CCS811
 #endif // NEED_DHT || NEED_BME || NEED_HDC1080
   //  char freq[8];
   //  snprintf( freq, 8, "%f", float(myFreq / 1e6) );
   //  doc["freq"] = freq;
   serializeJson(doc, (char*)msgBuf, 256);
   sendJSONPacket();
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("PONG sent!");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println("PONG sent!");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
   oled.println("PONG sent!");
 #endif // NEED_SSD1306
@@ -682,34 +692,34 @@ void savePrefs() {
 
 void setAutoPing(char* buff) {
   double fq = (double)(atof(buff) * 60e3);
-  if (NEED_DEBUG == 1) {
-    SerialUSB.print("PING frequency: ");
-    SerialUSB.print(buff);
-    SerialUSB.print(" --> ");
-    SerialUSB.println(fq);
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.print("PING frequency: ");
+  SerialUSB.print(buff);
+  SerialUSB.print(" --> ");
+  SerialUSB.println(fq);
+#endif // NEED_DEBUG
   if (fq == 0) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Turning auto PING off!");
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Turning auto PING off!");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
-      oled.println("auto PING off!");
-      oled.println((char*)msgBuf + 3);
+    oled.println("auto PING off!");
+    oled.println((char*)msgBuf + 3);
 #endif // NEED_SSD1306
     needPing = false;
     return;
   }
   if (fq < 60000) fq = 60000;
   if (fq > 600000) fq = 600000;
-  if (NEED_DEBUG == 1) {
-    SerialUSB.print("Turning auto PING on, every ");
-    SerialUSB.print((double)fq / 60e3);
-    SerialUSB.println(" mn");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.print("Turning auto PING on, every ");
+  SerialUSB.print((double)fq / 60e3);
+  SerialUSB.println(" mn");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
-      oled.print("auto PING: ");
-      oled.print((double)fq / 60e3);
-      oled.println(" mn");
+  oled.print("auto PING: ");
+  oled.print((double)fq / 60e3);
+  oled.println(" mn");
 #endif // NEED_SSD1306
   pingFrequency = fq;
   needPing = true;

@@ -59,7 +59,7 @@ There are a few commands to be used in the Serial Monitor (or another Terminal).
  |     Command      |         Explanation            |
  +==================+================================+
  |/DN<max 32 chars> |                 Set device name|
- | -> right now     |                           Pablo|
+ | -> right now     |                           Slava|
  +==================+================================+
  |/>xxxxxxxxxxx     |         send string xxxxxxxxxxx|
  +==================+================================+
@@ -105,9 +105,23 @@ There are a few commands to be used in the Serial Monitor (or another Terminal).
  | /pb0 or /pb0     |               turn off PA_BOOST|
  |  -> right now    |                              on|
  +---------------------------------------------------+
+ | /AP[0-X]         |      Set autoPING OFF (0) or ON|
+ |  -> right now    |                             OFF|
+ +---------------------------------------------------+
  | /P or /p         |                Send PING packet|
  +==================+================================+
  | Anything else    | show this help message.        |
+ +==================+================================+
+ | NEED_* OPTIONS   |                                |
+ +---------------------------------------------------+
+ | NEED_DEBUG       |                             OFF|
+ | NEED_EEPROM      |                             OFF|
+ | NEED_SIDE_I2C    |                             OFF|
+ | NEED_SSD1306     |                              ON|
+ | NEED_DHT         |                             OFF|
+ | NEED_BME         |                             OFF|
+ | NEED_HDC1080     |                              ON|
+ | NEED_CCS811      |                              ON|
  +==================+================================+
 ```
 
@@ -284,3 +298,38 @@ Most of the framework for Sets is in place, need testing now. Sets is basically 
 As described in [this blog post](https://kongduino.wordpress.com/2021/06/30/and-of-course-i-bought-another-yagi/), I have bought a Yagi for my 868 devices, and it seems to be working quite well: 7.5 km so far, with the yagi (awkwardly) installed indoors.
 
 ![Yagi at 7.5 km](Yagi_7_5km.jpg)
+
+## UPDATE [2021/07/11]
+
+This update adds a command to a feature that was already available in code, but not to the serial commands suite. Deep down in the code there is a `needPing` boolean. If it's `true`, a ping will be sent every `pingFrequency` milliseconds. Pavel gets an automatic setup to 2 minutes in this iteration:
+
+```c
+#ifdef Pavel
+// enable autoPing for Pavel
+double pingFrequency = 120000;
+// 120,000 ms = 2 mn
+bool needPing = true;
+#else
+double pingFrequency = 0;
+bool needPing = false;
+#endif
+```
+
+This is changeable with the `/AP` command:
+
+`| /AP[0-X]         |      Set autoPING OFF (0) or ON|` <-- See the help menu above.
+
+Whereby `0` means turning it off, and any other number will be in minutes. I have set two slightly artificial limits: minimum 1 minute, maximum 10 minutes.
+
+```c
+  if (fq < 60000) fq = 60000;
+  if (fq > 600000) fq = 600000;
+```
+
+You can change this to match your needs.
+
+As mentioned in the HDC1080 update, the CCS811 had been left alone. This is been updated: a `NEED_CCS811` define has been added, dependent on the `NEED_HDC1080` define. So you can now add tBOC and CO2 data to your output. If `NEED_CCS811` is defined, `sendPing` and `sendPong` will add tVOC and CO2 data to the packet. Likewise, when a packet is received, environment data present in the packet will be displayed (either in the Serial terminal and/or on the OLED, depending on your `NEED_*` options).
+
+Speaking of `NEED_*` options, they're now displayed in the help menu, see above.
+
+`NEED_DEBUG`, which was an `int` is now a define too.

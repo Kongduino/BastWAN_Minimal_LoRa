@@ -9,9 +9,11 @@
 // Uncomment this next line if you want to use a DHT22
 //#define NEED_DHT 1
 // Uncomment this next line if you want to use an SSD1306 OLED
-#define NEED_SSD1306 1
+//#define NEED_SSD1306 1
 // Uncomment this next line if you want to use an HDC1080
-#define NEED_HDC1080 1
+//#define NEED_HDC1080 1
+// Uncomment this next line if you want to use an CCS811
+//#define NEED_CCS811 1
 // Uncomment this next line if you want to use an EEPROM
 //#define NEED_EEPROM
 #include <SPI.h>
@@ -66,6 +68,14 @@ ClosedCube_HDC1080 hdc1080;
 double lastReading = 0;
 float temp_hum_val[2] = {0};
 #define PING_DELAY 300000 // 5 minutes
+#ifdef NEED_CCS811 // Linked to NEED_HDC1080
+#include <SparkFunCCS811.h>
+#define CCS811_ADDR 0x5A // Alternate I2C Address
+uint16_t tvoc_co2[2] = {0};
+#define PIN_NOT_WAKE 5
+#define PIN_NOT_INT 6
+CCS811 myCCS811(CCS811_ADDR);
+#endif // NEED_CCS811
 #endif // NEED_HDC1080
 
 #ifdef NEED_BME
@@ -111,14 +121,14 @@ void setup() {
   // ---- HOUSEKEEPING ----
   SerialUSB.begin(115200);
   delay(3000);
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("\n\nBastWAN at your service!");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println("\n\nBastWAN at your service!");
+#endif // NEED_DEBUG
 #ifdef NEED_SIDE_I2C
   // this has to happen first, if the I2C bus is powered by 5/6
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println(" - Set up I2C");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println(" - Set up I2C");
+#endif // NEED_DEBUG
   pinMode(5, OUTPUT);
   pinMode(6, OUTPUT);
   digitalWrite(5, LOW); // Keyboard Featherwing I2C GND
@@ -142,16 +152,16 @@ void setup() {
 #endif // NEED_SSD1306
 
 #ifdef NEED_EEPROM
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println(" - Start EEPROM");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println(" - Start EEPROM");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
   oled.println(" . Start EEPROM");
 #endif // NEED_SSD1306
   if (myMem.begin() == false) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("   No memory detected. Freezing.");
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("   No memory detected. Freezing.");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
     oled.println("No memory detected.");
     oled.println("Freezing...");
@@ -160,30 +170,30 @@ void setup() {
       ;
   }
   uint32_t myLen = myMem.length(), index = 0;
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("Memory detected!");
-    SerialUSB.print("Mem size in bytes: ");
-    SerialUSB.println(myLen);
+#ifdef NEED_DEBUG
+  SerialUSB.println("Memory detected!");
+  SerialUSB.print("Mem size in bytes: ");
+  SerialUSB.println(myLen);
 #ifdef NEED_SSD1306
-    oled.println("Memory detected!");
-    oled.println("Size in bytes: ");
-    oled.println(myLen);
+  oled.println("Memory detected!");
+  oled.println("Size in bytes: ");
+  oled.println(myLen);
 #endif // NEED_SSD1306
-  }
+#endif // NEED_DEBUG
   memset(msgBuf, 0, 97);
   myMem.read(0, msgBuf, 32);
   myMem.read(32, msgBuf + 32, 32);
   myMem.read(64, msgBuf + 64, 32);
   // Let's limit the JSON string size to 96 for now.
-  if (NEED_DEBUG == 1) {
-    hexDump(msgBuf, 96);
-  }
+#ifdef NEED_DEBUG
+  hexDump(msgBuf, 96);
+#endif // NEED_DEBUG
   StaticJsonDocument<200> doc;
   DeserializationError error = deserializeJson(doc, msgBuf);
   if (error) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println(F("\ndeserializeJson() failed!"));
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println(F("\ndeserializeJson() failed!"));
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
     oled.println("JSON prefs fail.");
 #endif // NEED_SSD1306
@@ -194,13 +204,13 @@ void setup() {
   myBW = doc["myBW"];
   myCR = doc["myCR"];
   const char *x = doc["deviceName"];
-  memcpy(deviceName, x, 33);
-  if (NEED_DEBUG == 1) {
-    SerialUSB.print("FQ: "); SerialUSB.println(myFreq / 1e6);
-    SerialUSB.print("SF: "); SerialUSB.println(mySF);
-    SerialUSB.print("BW: "); SerialUSB.println(myBW);
-    SerialUSB.print("Device Name: "); SerialUSB.println(deviceName);
-  }
+  setDeviceName(x);
+#ifdef NEED_DEBUG
+  SerialUSB.print("FQ: "); SerialUSB.println(myFreq / 1e6);
+  SerialUSB.print("SF: "); SerialUSB.println(mySF);
+  SerialUSB.print("BW: "); SerialUSB.println(myBW);
+  SerialUSB.print("Device Name: "); SerialUSB.println(deviceName);
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
   oled.println("JSON prefs fail.");
   oled.print("SF: "); oled.println(SF);
@@ -210,18 +220,18 @@ void setup() {
 
 #ifdef NEED_BME
   // ---- BME STUFF ----
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println(" - ClosedCube BME680 ([T]emperature, [P]ressure, [H]umidity)");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println(" - ClosedCube BME680 ([T]emperature, [P]ressure, [H]umidity)");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
   oled.println("ClosedCube BME680");
 #endif // NEED_SSD1306
   bme680.init(0x77); // I2C address: 0x76 or 0x77
   bme680.reset();
-  if (NEED_DEBUG == 1) {
-    SerialUSB.print("Chip ID=0x");
-    SerialUSB.println(bme680.getChipID(), HEX);
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.print("Chip ID=0x");
+  SerialUSB.println(bme680.getChipID(), HEX);
+#endif // NEED_DEBUG
   // oversampling: humidity = x1, temperature = x2, pressure = x16
   bme680.setOversampling(BME680_OVERSAMPLING_X1, BME680_OVERSAMPLING_X2, BME680_OVERSAMPLING_X16);
   bme680.setIIRFilter(BME680_FILTER_3);
@@ -236,9 +246,9 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   LoRa.setPins(SS, RFM_RST, RFM_DIO0);
   if (!LoRa.begin(myFreq)) {
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Starting LoRa failed!\nNow that's disappointing...");
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Starting LoRa failed!\nNow that's disappointing...");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
     oled.println("LoRa init failed!");
     oled.println("Freezing...");
@@ -311,8 +321,17 @@ void setup() {
 
 #ifdef Pavel
   setDeviceName("Pavel");
+  // enable autoPing for Pavel
+  double pingFrequency = 120000;
+  // 120,000 ms = 2 mn
+  bool needPing = true;
 #else
-  setDeviceName("Slava");
+  setDeviceName("Slavapas");
+  // enable autoPing for Pavel
+  double pingFrequency = 120000;
+  // 120,000 ms = 2 mn
+  bool needPing = true;
+  // Only this time for Slava.
 #endif // Pavel
 #ifdef NEED_SSD1306
   oled.println("Device name:"); oled.println(deviceName);
@@ -348,6 +367,31 @@ void setup() {
   SerialUSB.println(reg.HumidityMeasurementResolution, HEX);
   SerialUSB.print("TemperatureMeasurementResolution: 0x");
   SerialUSB.println(reg.TemperatureMeasurementResolution, HEX);
+
+#ifdef NEED_CCS811 // Linked to NEED_HDC1080
+#ifdef NEED_SSD1306
+  oled.println("CCS811");
+#endif // NEED_SSD1306
+  // This begins the CCS811 sensor and prints error status of .beginWithStatus()
+  CCS811Core::CCS811_Status_e returnCode = myCCS811.beginWithStatus();
+  Serial.print("CCS811 begin exited with: ");
+  // Pass the error code to a function to print the results
+  Serial.println(myCCS811.statusString(returnCode));
+  // This sets the mode to 60 second reads, and prints returned error status.
+  returnCode = myCCS811.setDriveMode(2);
+  Serial.print("Mode request exited with: ");
+  Serial.println(myCCS811.statusString(returnCode));
+  // Configure and enable the interrupt line,
+  // then print error status
+  pinMode(PIN_NOT_INT, INPUT_PULLUP);
+  returnCode = myCCS811.enableInterrupts();
+  Serial.print("Interrupt configuration exited with: ");
+  Serial.println(myCCS811.statusString(returnCode));
+  // Configure the wake line
+  pinMode(PIN_NOT_WAKE, OUTPUT);
+  digitalWrite(PIN_NOT_WAKE, 1); // Start asleep
+#endif // NEED_CCS811
+
 #endif // NEED_HDC1080
 
 #ifdef NEED_SSD1306
@@ -437,14 +481,14 @@ void loop() {
     oled.print("RSSI: ");
     oled.println(rssi);
 #endif // NEED_SSD1306
-    if (NEED_DEBUG == 1) {
-      SerialUSB.println("Received packet: ");
-      hexDump(msgBuf, ix);
-    }
+#ifdef NEED_DEBUG
+    SerialUSB.println("Received packet: ");
+    hexDump(msgBuf, ix);
+#endif // NEED_DEBUG
     if (needEncryption) {
-      if (NEED_DEBUG == 1) {
-        SerialUSB.println("\n . Decrypting...");
-      }
+#ifdef NEED_DEBUG
+      SerialUSB.println("\n . Decrypting...");
+#endif // NEED_DEBUG
       packetSize = decryptECB(msgBuf, ix);
       if (packetSize > -1) {
         memset(msgBuf, 0, 256);
@@ -458,10 +502,10 @@ void loop() {
     StaticJsonDocument<200> doc;
     DeserializationError error = deserializeJson(doc, msgBuf);
     if (error) {
-      if (NEED_DEBUG == 1) {
-        SerialUSB.print(F("deserializeJson() failed: "));
-        SerialUSB.println(error.f_str());
-      }
+#ifdef NEED_DEBUG
+      SerialUSB.print(F("deserializeJson() failed: "));
+      SerialUSB.println(error.f_str());
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
       oled.print("deserializeJson failed");
 #endif // NEED_SSD1306
@@ -470,10 +514,10 @@ void loop() {
 
     // DISPLAY HERE JSON PACKET
     // IF NEED_DEBUG IS NOT DEFINED
-    if (NEED_DEBUG == 0) {
-      doc["rssi"] = rssi;
-      serializeJson(doc, Serial);
-    }
+#ifndef NEED_DEBUG
+    doc["rssi"] = rssi;
+    serializeJson(doc, Serial);
+#endif
     // Print 4-byte ID
     const char *myID = doc["UUID"];
     // Print sender
@@ -493,9 +537,22 @@ void loop() {
       oled.println(msg);
 #endif // NEED_SSD1306
     }
+    JsonVariant mydata = doc["V"];
+    if (!mydata.isNull()) {
+      uint16_t tvoc = mydata.as<uint16_t>();
+      mydata = doc["C"];
+      uint16_t co2 = mydata.as<uint16_t>();
+      char buff[32];
+      sprintf(buff, "H: %2.2f%% T: %2.2f *C\n", tvoc, co2);
+      SerialUSB.print(buff);
+#ifdef NEED_SSD1306
+      oled.print(buff);
+#endif // NEED_SSD1306
+    }
+
     bool hasLatLong = true;
     float tLat, tLong, tDistance;
-    JsonVariant mydata = doc["lat"];
+    mydata = doc["lat"];
     if (mydata.isNull()) {
       // we don't have
       hasLatLong = false;
@@ -512,59 +569,98 @@ void loop() {
         tDistance = haversine(homeLatitude, homeLongitude, tLat, tLong);
       }
     }
-    if (NEED_DEBUG == 1) {
-      SerialUSB.print("ID: ");
-      SerialUSB.println(myID);
-      SerialUSB.print("Sender: ");
-      SerialUSB.println(from);
-      SerialUSB.print("Command: ");
-      SerialUSB.println(cmd);
-      if (strcmp(cmd, "msg") == 0) {
-        const char *msg = doc["msg"];
-        SerialUSB.print("Message: ");
-        SerialUSB.println(msg);
-      }
-      if (hasLatLong) {
-        SerialUSB.print("Distance: ");
-        if (tDistance >= 1000.0) {
-          SerialUSB.print(tDistance / 1000.0);
-          SerialUSB.println(" km");
-        } else {
-          SerialUSB.print(tDistance);
-          SerialUSB.println(" m");
-        }
-      }
-      SerialUSB.print("RSSI: ");
-      SerialUSB.println(rssi);
+#ifdef NEED_DEBUG
+    SerialUSB.print("ID: ");
+    SerialUSB.println(myID);
+    SerialUSB.print("Sender: ");
+    SerialUSB.println(from);
+    SerialUSB.print("Command: ");
+    SerialUSB.println(cmd);
+    if (strcmp(cmd, "msg") == 0) {
+      const char *msg = doc["msg"];
+      SerialUSB.print("Message: ");
+      SerialUSB.println(msg);
     }
+    if (hasLatLong) {
+      SerialUSB.print("Distance: ");
+      if (tDistance >= 1000.0) {
+        SerialUSB.print(tDistance / 1000.0);
+        SerialUSB.println(" km");
+      } else {
+        SerialUSB.print(tDistance);
+        SerialUSB.println(" m");
+      }
+    }
+    SerialUSB.print("RSSI: ");
+    SerialUSB.println(rssi);
+#endif // NEED_DEBUG
     if (strcmp(cmd, "ping") == 0 && pongBack) {
       // if it's a PING, and we are set to respond:
       LoRa.idle();
-      if (NEED_DEBUG == 1) {
-        SerialUSB.println("Pong back:");
-      }
+#ifdef NEED_DEBUG
+      SerialUSB.println("Pong back:");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
       oled.print("PONG back! ");
 #endif // NEED_SSD1306
       // we cannot pong back right away – the message would be lost
       // if there are other devices on the same network
       uint16_t dl = getRamdom16() % 2800 + 3300;
-      if (NEED_DEBUG == 1) {
-        SerialUSB.println("Delaying " + String(dl) + " millis...");
-      }
+#ifdef NEED_DEBUG
+      SerialUSB.println("Delaying " + String(dl) + " millis...");
+#endif // NEED_DEBUG
       delay(dl);
       sendPong((char*)myID, rssi);
       LoRa.receive();
     } else if (strcmp(cmd, "pong") == 0) {
       int rcvRSSI = doc["rcvRSSI"];
-      if (NEED_DEBUG == 1) {
-        SerialUSB.print("rcvRSSI: ");
-        SerialUSB.println(rcvRSSI);
-      }
+#ifdef NEED_DEBUG
+      SerialUSB.print("rcvRSSI: ");
+      SerialUSB.println(rcvRSSI);
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
       oled.print("rcvRSSI: ");
       oled.println(rcvRSSI);
 #endif // NEED_SSD1306
+      mydata = doc["T"];
+      if (!mydata.isNull()) {
+        float tp = mydata.as<float>();
+        mydata = doc["H"];
+        float hm = mydata.as<float>();
+#ifdef NEED_DEBUG
+        SerialUSB.print("Humidity: ");
+        SerialUSB.print(hm);
+        SerialUSB.print("% Temperature: ");
+        SerialUSB.println(tp);
+#endif // NEED_DEBUG
+#ifdef NEED_SSD1306
+        oled.print("H: ");
+        oled.print(hm);
+        oled.print("% ");
+        oled.print("T: ");
+        oled.print(tp);
+        oled.println(" C");
+#endif // NEED_SSD1306
+      }
+      mydata = doc["V"];
+      if (!mydata.isNull()) {
+        float tVoc = mydata.as<float>();
+        mydata = doc["C"];
+        float cO2 = mydata.as<float>();
+#ifdef NEED_DEBUG
+        SerialUSB.print("tVoc: ");
+        SerialUSB.println(tVoc);
+        SerialUSB.print("% CO2: ");
+        SerialUSB.println(cO2);
+#endif // NEED_DEBUG
+#ifdef NEED_SSD1306
+        oled.print("tVoc: ");
+        oled.print(tVoc);
+        oled.print(" ");
+        oled.print("co2: ");
+        oled.println(cO2);
+#endif // NEED_SSD1306
+      }
     } else if (strcmp(cmd, "freq") == 0) {
       // Do we have a frequency change request?
       if (strcmp(from, "BastMobile") != 0) return;
@@ -576,18 +672,18 @@ void loop() {
         uint32_t fq = mydata.as<float>() * 1e6;
         if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['freq']) = " + String(fq, 3));
         if (fq < 862e6 || fq > 1020e6) {
-          if (NEED_DEBUG == 1) {
-            SerialUSB.println("Requested frequency (" + String(fq) + ") is invalid!");
-          }
+#ifdef NEED_DEBUG
+          SerialUSB.println("Requested frequency (" + String(fq) + ") is invalid!");
+#endif // NEED_DEBUG
         } else {
           myFreq = fq;
           LoRa.idle();
           LoRa.setFrequency(myFreq);
           delay(100);
           LoRa.receive();
-          if (NEED_DEBUG == 1) {
-            SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
-          }
+#ifdef NEED_DEBUG
+          SerialUSB.println("Frequency set to " + String(myFreq / 1e6, 3) + " MHz");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
           oled.print("New freq: ");
           oled.println(String(myFreq / 1e6, 3) + " MHz");
@@ -632,18 +728,18 @@ void loop() {
         int bw = mydata.as<int>();
         if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['bw']) = " + String(bw));
         if (bw < 0 || bw > 9) {
-          if (NEED_DEBUG == 1) {
-            SerialUSB.println("Requested bandwidth (" + String(bw) + ") is invalid!");
-          }
+#ifdef NEED_DEBUG
+          SerialUSB.println("Requested bandwidth (" + String(bw) + ") is invalid!");
+#endif // NEED_DEBUG
         } else {
           myBW = bw;
           LoRa.idle();
           LoRa.setSignalBandwidth(BWs[myBW] * 1e3);
           delay(100);
           LoRa.receive();
-          if (NEED_DEBUG == 1) {
-            SerialUSB.println("Bandwidth set to " + String(BWs[myBW], 3) + " KHz");
-          }
+#ifdef NEED_DEBUG
+          SerialUSB.println("Bandwidth set to " + String(BWs[myBW], 3) + " KHz");
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
           oled.print("New BW: ");
           oled.println(String(BWs[myBW], 3) + " KHz");
@@ -662,18 +758,18 @@ void loop() {
         int sf = mydata.as<int>();
         if (NEED_DEBUG == 1) SerialUSB.println("mydata (doc['sf']) = " + String(sf));
         if (sf < 7 || sf > 12) {
-          if (NEED_DEBUG == 1) {
-            SerialUSB.println("Requested SF (" + String(sf) + ") is invalid!");
-          }
+#ifdef NEED_DEBUG
+          SerialUSB.println("Requested SF (" + String(sf) + ") is invalid!");
+#endif // NEED_DEBUG
         } else {
           mySF = sf;
           LoRa.idle();
           LoRa.setSpreadingFactor(mySF);
           delay(100);
           LoRa.receive();
-          if (NEED_DEBUG == 1) {
-            SerialUSB.println("SF set to " + String(sf));
-          }
+#ifdef NEED_DEBUG
+          SerialUSB.println("SF set to " + String(sf));
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
           oled.print("New SF: ");
           oled.println(mySF);
@@ -694,10 +790,10 @@ void loop() {
         float F = setsFQ[0];
         int S = setsSF[0];
         int B = setsBW[0];
-        if (NEED_DEBUG == 1) {
-          sprintf((char*)msgBuf, " . Freq: %3.3f MHz, SF %d, BW %d: %3.2f", F, S, B, BWs[B]);
-          SerialUSB.println((char*)msgBuf);
-        }
+#ifdef NEED_DEBUG
+        sprintf((char*)msgBuf, " . Freq: %3.3f MHz, SF %d, BW %d: %3.2f", F, S, B, BWs[B]);
+        SerialUSB.println((char*)msgBuf);
+#endif // NEED_DEBUG
         myFreq = F * 1e6;
         mySF = S;
         myBW = B;
@@ -744,9 +840,9 @@ void displayBME680() {
 #ifdef NEED_SSD1306
   oled.println("displayBME680");
 #endif // NEED_SSD1306
-  if (NEED_DEBUG == 1) {
-    SerialUSB.println("BME680");
-  }
+#ifdef NEED_DEBUG
+  SerialUSB.println("BME680");
+#endif // NEED_DEBUG
   ClosedCube_BME680_Status status = bme680.readStatus();
   if (status.newDataFlag) {
     double temp = bme680.readTemperature();
@@ -758,14 +854,14 @@ void displayBME680() {
 #ifdef NEED_SSD1306
     displayHT();
 #endif // NEED_SSD1306
-    if (NEED_DEBUG == 1) {
-      sprintf((char*)msgBuf, "result: T = % f C, RH = % f % %, P = % d hPa\n", temp, hum, pres);
-      SerialUSB.println((char*)msgBuf);
-    }
+#ifdef NEED_DEBUG
+    sprintf((char*)msgBuf, "result: T = % f C, RH = % f % %, P = % d hPa\n", temp, hum, pres);
+    SerialUSB.println((char*)msgBuf);
+#endif // NEED_DEBUG
     lastReading = millis();
   }
 }
-#endif
+#endif // NEED_DEBUG
 
 #ifdef NEED_DHT
 void displayDHT() {
@@ -797,6 +893,25 @@ void displayHDC1080() {
   temp_hum_val[1] = hdc1080.readTemperature();
   sprintf(buff, "Temp: %2.2f C, Humidity: %2.2f%%\n", temp_hum_val[1], temp_hum_val[0]);
   Serial.print(buff);
+#ifdef NEED_CCS811 // Linked to NEED_HDC1080
+  // Look for interrupt request from CCS811
+  if (digitalRead(PIN_NOT_INT) == 0) {
+    // Wake up the CCS811 logic engine
+    digitalWrite(PIN_NOT_WAKE, 0);
+    // Need to wait at least 50 µs
+    delay(1);
+    // Interrupt signal caught, so cause the CCS811 to run its algorithm
+    myCCS811.readAlgorithmResults(); // Calling this function updates the global tVOC and CO2 variables
+    tvoc_co2[0] = myCCS811.getTVOC();
+    tvoc_co2[1] = myCCS811.getCO2();
+    char buff[32];
+    sprintf(buff, "tVOC: %d co2: %d\n", tvoc_co2[0], tvoc_co2[1]);
+    Serial.print(buff);
+    // Now put the CCS811's logic engine to sleep
+    digitalWrite(PIN_NOT_WAKE, 1);
+    // Need to be asleep for at least 20 µs
+  }
+#endif // NEED_CCS811
 #ifdef NEED_SSD1306
   displayHT();
 #endif // NEED_SSD1306
@@ -805,10 +920,12 @@ void displayHDC1080() {
 
 #ifdef NEED_SSD1306
 void displayHT() {
-  oled.print("H: ");
-  oled.print(temp_hum_val[0]);
-  oled.print("% T: ");
-  oled.print(temp_hum_val[1]);
-  oled.println(" *C");
+  char buff[32];
+  sprintf(buff, "H: %2.2f%% T: %2.2f *C\n", temp_hum_val[0], temp_hum_val[1]);
+  oled.println(buff);
+#ifdef NEED_CCS811 // Linked to NEED_HDC1080
+  sprintf(buff, "tVOC: %d co2: %d\n", tvoc_co2[0], tvoc_co2[1]);
+  oled.println(buff);
+#endif // NEED_CCS811
 }
 #endif // NEED_SSD1306

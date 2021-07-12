@@ -209,9 +209,9 @@ void showHelp() {
   SerialUSB.print(buff);
   if (!needPing) sprintf(buff, " |%-18s|%32s|\n", "  -> right now", "OFF");
   else {
-    char np[32];
-    sprintf(np, "ON: %d mn", pingFrequency / 60e3);
-    sprintf(buff, " |%-18s|%32s|\n", "  -> right now", np);
+    String np;
+    np = "ON: " + String(pingFrequency / 60e3, 1) + " mn";
+    sprintf(buff, " |%-18s|%32s|\n", "  -> right now", np.c_str());
   }
   SerialUSB.print(buff);
   SerialUSB.println(" +---------------------------------------------------+");
@@ -219,5 +219,63 @@ void showHelp() {
   SerialUSB.print(buff);
   SerialUSB.println(" +==================+================================+");
   SerialUSB.println(" | Anything else    | show this help message.        |");
+  SerialUSB.println(" +==================+================================+");
+  SerialUSB.println(" | NEED_* OPTIONS   |                                |");
+  SerialUSB.println(" +---------------------------------------------------+");
+#ifdef NEED_DEBUG
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_DEBUG", "ON");
+#else
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_DEBUG", "OFF");
+#endif // NEED_DEBUG
+  SerialUSB.print(buff);
+
+#ifdef NEED_EEPROM
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_EEPROM", "ON");
+#else
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_EEPROM", "OFF");
+#endif // NEED_EEPROM
+  SerialUSB.print(buff);
+
+#ifdef NEED_SIDE_I2C
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_SIDE_I2C", "ON");
+#else
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_SIDE_I2C", "OFF");
+#endif // NEED_SIDE_I2C
+  SerialUSB.print(buff);
+
+#ifdef NEED_SSD1306
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_SSD1306", "ON");
+#else
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_SSD1306", "OFF");
+#endif // NEED_SSD1306
+  SerialUSB.print(buff);
+
+#ifdef NEED_DHT
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_DHT", "ON");
+#else
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_DHT", "OFF");
+#endif // NEED_DHT
+  SerialUSB.print(buff);
+
+#ifdef NEED_BME
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_BME", "ON");
+#else
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_BME", "OFF");
+#endif // NEED_BME
+  SerialUSB.print(buff);
+
+#ifdef NEED_HDC1080
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_HDC1080", "ON");
+#else
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_HDC1080", "OFF");
+#endif // NEED_HDC1080
+  SerialUSB.print(buff);
+
+#ifdef NEED_CCS811
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_CCS811", "ON");
+#else
+  sprintf(buff, " |%-18s|%32s|\n", " NEED_CCS811", "OFF");
+#endif // NEED_CCS811
+  SerialUSB.print(buff);
   SerialUSB.println(" +==================+================================+");
 }
