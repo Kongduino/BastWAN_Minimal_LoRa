@@ -1,5 +1,5 @@
 void handleSerial() {
-  memset(msgBuf, 0, 256);
+  memset(msgBuf, 0, BUFF_LENGTH);
   int ix = 0;
   while (SerialUSB.available() && ix < 255) {
     char c = SerialUSB.read();

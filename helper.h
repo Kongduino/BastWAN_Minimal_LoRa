@@ -51,12 +51,13 @@ bool needAuthentification = true;
 bool pongBack = true;
 bool OCP_ON = false, PA_BOOST = true;
 uint8_t SecretKey[33] = "YELLOW SUBMARINEENIRAMBUS WOLLEY";
-uint8_t encBuf[128], hexBuf[256], msgBuf[256];
+char deviceName[33];
+#define BUFF_LENGTH 512
+uint8_t encBuf[BUFF_LENGTH], hexBuf[BUFF_LENGTH], msgBuf[BUFF_LENGTH];
 uint8_t randomStock[256];
 uint8_t randomIndex = 0;
 float lastBattery = 0.0;
 double batteryUpdateDelay;
-char deviceName[33];
 uint32_t myFreq = 868125000;
 int mySF = 10;
 uint8_t myBW = 7;
@@ -83,7 +84,7 @@ float homeLongitude = 114.0003769;
 uint8_t TxPower = 20;
 
 // Sets of Freq / SF / BW settings
-StaticJsonDocument<256>sets;
+StaticJsonDocument<BUFF_LENGTH>sets;
 JsonArray setsFQ, setsSF, setsBW;
 
 uint16_t encryptECB(uint8_t*);
@@ -323,7 +324,7 @@ uint16_t encryptECB(uint8_t* myBuf) {
   SerialUSB.println("\nolen: " + String(olen) + ", len: " + String(len));
   memset(encBuf, (olen - len), olen);
   memcpy(encBuf, myBuf, len);
-  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+
   // SerialUSB.println("myBuf:");
   // hexDump(encBuf, olen);
   encBuf[len] = 0;
@@ -331,7 +332,7 @@ uint16_t encryptECB(uint8_t* myBuf) {
   uint8_t rounds = olen / 16, steps = 0;
   for (uint8_t ix = 0; ix < rounds; ix++) {
     AES_ECB_encrypt(&ctx, encBuf + steps);
-    SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+  
     // void AES_ECB_decrypt(&ctx, encBuf + steps);
     steps += 16;
     // encrypts in place, 16 bytes at a time
@@ -340,7 +341,7 @@ uint16_t encryptECB(uint8_t* myBuf) {
   SerialUSB.println("encBuf:");
   hexDump(encBuf, olen);
 #endif // NEED_DEBUG
-  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+
 
   // Now do we have to add a MAC?
   if (needAuthentification) {
@@ -353,9 +354,9 @@ uint16_t encryptECB(uint8_t* myBuf) {
     // authenticate in place
     // at offset olen
     // OF COURSE IT'D BE NICE TO CHECK THAT OLEN+SHA224_DIGEST_SIZE DOESN'T BLOW UP THE BUFFER
-    SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+  
     hmac_sha224(key, 20, (unsigned char *)encBuf, olen, (unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
-    SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+  
 #ifdef NEED_DEBUG
     SerialUSB.println("MAC, plain [" + String(olen) + "]:");
     hexDump((unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
@@ -365,7 +366,7 @@ uint16_t encryptECB(uint8_t* myBuf) {
     SerialUSB.println("encBuf with MAC:");
     hexDump(encBuf, olen);
 #endif // NEED_DEBUG
-    SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+  
   }
   return olen;
 }
@@ -566,8 +567,8 @@ void setDeviceName(char *truc) {
 }
 
 void prepareJSONPacket(char *buff) {
-  StaticJsonDocument<256> doc;
-  memset(msgBuf, 0, 256);
+  StaticJsonDocument<BUFF_LENGTH> doc;
+  memset(msgBuf, 0, BUFF_LENGTH);
   char myID[9];
   getRandomBytes(encBuf, 4);
   array2hex(encBuf, 4, (uint8_t*)myID);
@@ -578,13 +579,13 @@ void prepareJSONPacket(char *buff) {
   char x[33];
   memcpy(x, deviceName, 33);
   doc["from"] = x;
-  serializeJson(doc, (char*)msgBuf, 256);
+  serializeJson(doc, (char*)msgBuf, BUFF_LENGTH);
   sendJSONPacket();
 }
 
 void sendJSONPacket() {
 #ifdef NEED_DEBUG
-  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+
   SerialUSB.println("Sending JSON Packet... ");
 #endif
   LoRa.idle();
@@ -603,7 +604,7 @@ void sendJSONPacket() {
 #ifdef NEED_DEBUG
   SerialUSB.println("Sending packet...");
 #endif
-  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+
   // Now send a packet
   digitalWrite(LED_BUILTIN, 1);
   // digitalWrite(PIN_PA28, LOW);
@@ -618,7 +619,7 @@ void sendJSONPacket() {
     LoRa.write(msgBuf, olen);
   }
   LoRa.endPacket();
-  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+
   /*
     RegRssiValue (0x1B)
     Current RSSI value (dBm)
@@ -639,14 +640,14 @@ void sendJSONPacket() {
 
 void sendPing() {
   // PING!
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<BUFF_LENGTH> doc;
   char myID[9];
   getRandomBytes(encBuf, 4);
   array2hex(encBuf, 4, (uint8_t*)myID);
   myID[8] = 0;
   doc["UUID"] = myID;
   doc["cmd"] = "ping";
-  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+
   char x[33];
   memcpy(x, deviceName, 33);
   doc["from"] = x;
@@ -665,9 +666,9 @@ void sendPing() {
 #endif // NEED_CCS811
 #endif // NEED_DHT || NEED_BME || NEED_HDC1080
 
-  serializeJson(doc, (char*)msgBuf, 256);
+  serializeJson(doc, (char*)msgBuf, BUFF_LENGTH);
   sendJSONPacket();
-  SerialUSB.println("\ndevicename:"); hexDump((uint8_t*)deviceName, 32);
+
 #ifdef NEED_DEBUG
   SerialUSB.println("PING sent!");
 #endif
@@ -679,7 +680,7 @@ void sendPing() {
 
 void sendPong(char *msgID, int rssi) {
   // PONG!
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<BUFF_LENGTH> doc;
   char myID[9];
   getRandomBytes(encBuf, 4);
   array2hex(encBuf, 4, (uint8_t*)myID);
@@ -701,7 +702,7 @@ void sendPong(char *msgID, int rssi) {
   // char freq[8];
   // snprintf( freq, 8, "%f", float(myFreq / 1e6) );
   // doc["freq"] = freq;
-  serializeJson(doc, (char*)msgBuf, 256);
+  serializeJson(doc, (char*)msgBuf, BUFF_LENGTH);
   sendJSONPacket();
 #ifdef NEED_DEBUG
   SerialUSB.println("PONG sent!");

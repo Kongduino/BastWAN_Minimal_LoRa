@@ -1,5 +1,5 @@
 // Uncomment the next line if uploading to Pavel
-#define Pavel 1
+// #define Pavel 1
 // Comment out this lime if you need the silent version:
 // only incoming packets will be displayed in the serial monitor.
 // If something doesn't work you won't know it though, unless
@@ -11,13 +11,13 @@
 // Particularly useful on a breadboard as they are next to SDA/SCL
 // #define NEED_SIDE_I2C 1
 // Uncomment this next line if you want to use a DHT22
-#define NEED_DHT
+// #define NEED_DHT
 // Uncomment this next line if you want to use an SSD1306 OLED
-// #define NEED_SSD1306 1
+#define NEED_SSD1306 1
 // Uncomment this next line if you want to use an HDC1080
-// #define NEED_HDC1080 1
+#define NEED_HDC1080 1
 // Uncomment this next line if you want to use an CCS811
-// #define NEED_CCS811 1
+#define NEED_CCS811 1
 // Uncomment this next line if you want to use an EEPROM
 // #define NEED_EEPROM
 // #define NEED_SHATEST
@@ -186,7 +186,7 @@ void setup() {
   oled.println(myLen);
 #endif // NEED_SSD1306
 #endif // NEED_DEBUG
-  memset(msgBuf, 0, 97);
+  memset(msgBuf, 0, BUFF_LENGTH);
   myMem.read(0, msgBuf, 32);
   myMem.read(32, msgBuf + 32, 32);
   myMem.read(64, msgBuf + 64, 32);
@@ -333,7 +333,7 @@ void setup() {
   // 120,000 ms = 2 mn
   bool needPing = true;
 #else
-  setDeviceName("Slavapas");
+  setDeviceName("Slavacumbaya");
   // enable autoPing for Pavel
   double pingFrequency = 120000;
   // 120,000 ms = 2 mn
@@ -411,7 +411,7 @@ void setup() {
 #endif // NEED_SSD1306
 #ifdef NEED_DEBUG
     SerialUSB.println(F("\ndeserializeJson() in Sets failed!"));
-    hexDump(msgBuf, 256);
+    hexDump(msgBuf, BUFF_LENGTH);
 #endif // NEED_DEBUG
   } else {
     setsFQ = sets["freq"];
@@ -487,7 +487,7 @@ void loop() {
 #ifdef NEED_SSD1306
     oled.print("Incoming! ");
 #endif // NEED_SSD1306
-    memset(msgBuf, 0xFF, 256);
+    memset(msgBuf, 0xFF, BUFF_LENGTH);
     int ix = 0;
     while (LoRa.available()) {
       char c = (char)LoRa.read();
@@ -509,7 +509,7 @@ void loop() {
 #endif // NEED_DEBUG
       packetSize = decryptECB(msgBuf, ix);
       if (packetSize > -1) {
-        memset(msgBuf, 0, 256);
+        memset(msgBuf, 0, BUFF_LENGTH);
         memcpy(msgBuf, encBuf, packetSize);
       } else {
         SerialUSB.println("Error while decrypting");
