@@ -245,7 +245,9 @@ void sendPacket(char *buff) {
 }
 
 int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
+#ifdef NEED_DEBUG
   hexDump(myBuf, olen);
+#endif
   // Test the total len vs requirements:
   // AES: min 16 bytes
   // HMAC if needed: 28 bytes
@@ -265,19 +267,30 @@ int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
     unsigned char digest[SHA224_DIGEST_SIZE];
     unsigned char mac[SHA224_DIGEST_SIZE];
     memset(key, 0x0b, 20);// set up key
+#ifdef NEED_DEBUG
     SerialUSB.println("Original HMAC:"); hexDump((unsigned char *)encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE);
+#endif // NEED_DEBUG
     hmac_sha224(key, 20, (unsigned char *)encBuf, len - SHA224_DIGEST_SIZE, mac, SHA224_DIGEST_SIZE);
+#ifdef NEED_DEBUG
     SerialUSB.println("HMAC:"); hexDump(mac, SHA224_DIGEST_SIZE);
-    if (memcmp(mac, encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE) == 0) SerialUSB.println(" * test passed");
-    else {
+#endif // NEED_DEBUG
+    if (memcmp(mac, encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE) == 0) {
+#ifdef NEED_DEBUG
+      SerialUSB.println(" * test passed");
+#endif // NEED_DEBUG
+    } else {
+#ifdef NEED_DEBUG
       SerialUSB.println(" * test failed");
       // notify we failed
+#endif // NEED_DEBUG
       return -1;
     }
     // deduct SHA224_DIGEST_SIZE from length
     len -= SHA224_DIGEST_SIZE;
   }
+#ifdef NEED_DEBUG
   hexDump(encBuf, len);
+#endif // NEED_DEBUG
 
   // hexDump(encBuf, len);
   // SerialUSB.print("  - Decrypting encBuf with SecretKey: ");
@@ -291,7 +304,9 @@ int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
     steps += 16;
     // encrypts in place, 16 bytes at a time
   } encBuf[steps] = 0;
+#ifdef NEED_DEBUG
   hexDump(encBuf, len);
+#endif // NEED_DEBUG
   return len;
 }
 
@@ -320,8 +335,10 @@ uint16_t encryptECB(uint8_t* myBuf) {
     steps += 16;
     // encrypts in place, 16 bytes at a time
   }
+#ifdef NEED_DEBUG
   SerialUSB.println("encBuf:");
   hexDump(encBuf, olen);
+#endif //NEED_DEBUG
 
   // Now do we have to add a MAC?
   if (needAuthentification) {
@@ -335,11 +352,15 @@ uint16_t encryptECB(uint8_t* myBuf) {
     // at offset olen
     // OF COURSE IT'D BE NICE TO CHECK THAT OLEN+SHA224_DIGEST_SIZE DOESN'T BLOW UP THE BUFFER
     hmac_sha224(key, 20, (unsigned char *)encBuf, olen, (unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
+#ifdef NEED_DEBUG
     SerialUSB.println("MAC, plain [" + String(olen) + "]:");
     hexDump((unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
+#endif // NEED_DEBUG
     olen += SHA224_DIGEST_SIZE;
+#ifdef NEED_DEBUG
     SerialUSB.println("encBuf with MAC:");
     hexDump(encBuf, olen);
+#endif // NEED_DEBUG
   }
   return olen;
 }

@@ -402,20 +402,26 @@ void setup() {
 #ifdef NEED_SSD1306
     oled.println("ndeserializeJson failed");
 #endif // NEED_SSD1306
+#ifdef NEED_DEBUG
     SerialUSB.println(F("\ndeserializeJson() in Sets failed!"));
     hexDump(msgBuf, 256);
+#endif //NEED_DEBUG
   } else {
     setsFQ = sets["freq"];
     setsSF = sets["sf"];
     setsBW = sets["bw"];
     uint8_t i, j = setsFQ.size();
+#ifdef NEED_DEBUG
     SerialUSB.println("\n\n" + String(j) + " Sets:");
+#endif //NEED_DEBUG
     for (i = 0; i < j; i++) {
       float F = setsFQ[i];
       int S = setsSF[i];
       int B = setsBW[i];
+#ifdef NEED_DEBUG
       sprintf((char*)msgBuf, " . Freq: %3.3f MHz, SF %d, BW %d: %3.2f", F, S, B, BWs[B]);
       SerialUSB.println((char*)msgBuf);
+#endif //NEED_DEBUG
 #ifdef NEED_SSD1306
       oled.print("Freq["); oled.print(i); oled.print("]: "); oled.println(String(F, 3) + " MHz");
       oled.print("SF["); oled.print(i); oled.print("]: "); oled.println(S);
@@ -423,7 +429,9 @@ void setup() {
 #endif // NEED_SSD1306
     }
   }
+#ifdef NEED_DEBUG
   SerialUSB.println("Setup done...");
+#endif //NEED_DEBUG
 #ifdef NEED_BME
   displayBME680();
   lastReading = millis();
