@@ -1,23 +1,23 @@
 // Uncomment the next line if uploading to Pavel
-#define Pavel 1
+//#define Pavel 1
 // Comment out this lime if you need the silent version:
 // only incoming packets will be displayed in the serial monitor.
 // If something doesn't work you won't know it though, unless
 // you plug in an OLED.
-#define NEED_DEBUG
+#define NEED_DEBUG 0
 // Uncomment this next line if you want to use a BME680
 // #define NEED_BME 1
 // Uncomment this next line if you want to use pins 5 & 6 for Gnd/Vcc
 // Particularly useful on a breadboard as they are next to SDA/SCL
 // #define NEED_SIDE_I2C 1
 // Uncomment this next line if you want to use a DHT22
-#define NEED_DHT
+//#define NEED_DHT
 // Uncomment this next line if you want to use an SSD1306 OLED
-//#define NEED_SSD1306 1
+#define NEED_SSD1306 1
 // Uncomment this next line if you want to use an HDC1080
-//#define NEED_HDC1080 1
+#define NEED_HDC1080 1
 // Uncomment this next line if you want to use an CCS811
-//#define NEED_CCS811 1
+#define NEED_CCS811 1
 // Uncomment this next line if you want to use an EEPROM
 // #define NEED_EEPROM
 // #define NEED_SHATEST
@@ -59,7 +59,7 @@
 
 #ifdef NEED_SSD1306
 #include "SSD1306Ascii.h"
-// Click here to get the library: http:// librarymanager/All#SSD1306Ascii
+// Click here to get the library: http://librarymanager/All#SSD1306Ascii
 #include "SSD1306AsciiWire.h"
 #define I2C_ADDRESS 0x3C
 #define RST_PIN -1
@@ -333,7 +333,7 @@ void setup() {
   // 120,000 ms = 2 mn
   bool needPing = true;
 #else
-  setDeviceName("Slava");
+  setDeviceName("Slavabien");
   // enable autoPing for Pavel
   double pingFrequency = 120000;
   // 120,000 ms = 2 mn
@@ -501,7 +501,7 @@ void loop() {
 #endif // NEED_SSD1306
 #ifdef NEED_DEBUG
     SerialUSB.println("Received packet: ");
-    hexDump(msgBuf, ix);
+    if (NEED_DEBUG > 0) hexDump(msgBuf, ix);
 #endif // NEED_DEBUG
     if (needEncryption) {
 #ifdef NEED_DEBUG

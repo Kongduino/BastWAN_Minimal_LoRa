@@ -165,14 +165,14 @@ void setPWD(char *buff) {
   SerialUSB.println(buff);
   SerialUSB.print("len: ");
   SerialUSB.println(len);
-  hexDump((uint8_t *)buff, len);
+  if (NEED_DEBUG > 0) hexDump((uint8_t *)buff, len);
 #endif
   if (len == 32) {
     // copy to the SecretKey buffer
     memcpy(SecretKey, buff, 32);
     needEncryption = true;
 #ifdef NEED_DEBUG
-    hexDump((uint8_t *)SecretKey, 32);
+    if (NEED_DEBUG > 0) hexDump((uint8_t *)SecretKey, 32);
 #endif
     return;
   }
@@ -181,7 +181,7 @@ void setPWD(char *buff) {
     hex2array((uint8_t *)buff, SecretKey, 64);
     needEncryption = true;
 #ifdef NEED_DEBUG
-    hexDump((uint8_t *)SecretKey, 32);
+    if (NEED_DEBUG > 0) hexDump((uint8_t *)SecretKey, 32);
 #endif
     return;
   }
@@ -208,7 +208,7 @@ void sendPacket(char *buff) {
 #endif
   memcpy(msgBuf, encBuf, olen);
 #ifdef NEED_DEBUG
-  hexDump(msgBuf, olen);
+  if (NEED_DEBUG > 0) hexDump(msgBuf, olen);
 #endif
   if (needEncryption) {
     olen = encryptECB((uint8_t*)msgBuf);
@@ -245,7 +245,7 @@ void sendPacket(char *buff) {
 
 int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
 #ifdef NEED_DEBUG
-  hexDump(myBuf, olen);
+  if (NEED_DEBUG > 0) hexDump(myBuf, olen);
 #endif
   // Test the total len vs requirements:
   // AES: min 16 bytes
@@ -267,11 +267,17 @@ int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
     unsigned char mac[SHA224_DIGEST_SIZE];
     memset(key, 0x0b, 20);// set up key
 #ifdef NEED_DEBUG
-    SerialUSB.println("Original HMAC:"); hexDump((unsigned char *)encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE);
+    if (NEED_DEBUG > 0) {
+      SerialUSB.println("Original HMAC:");
+      hexDump((unsigned char *)encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE);
+    }
 #endif // NEED_DEBUG
     hmac_sha224(key, 20, (unsigned char *)encBuf, len - SHA224_DIGEST_SIZE, mac, SHA224_DIGEST_SIZE);
 #ifdef NEED_DEBUG
-    SerialUSB.println("HMAC:"); hexDump(mac, SHA224_DIGEST_SIZE);
+    if (NEED_DEBUG > 0) {
+      SerialUSB.println("HMAC:");
+      hexDump(mac, SHA224_DIGEST_SIZE);
+    }
 #endif // NEED_DEBUG
     if (memcmp(mac, encBuf + len - SHA224_DIGEST_SIZE, SHA224_DIGEST_SIZE) == 0) {
 #ifdef NEED_DEBUG
@@ -288,12 +294,9 @@ int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
     len -= SHA224_DIGEST_SIZE;
   }
 #ifdef NEED_DEBUG
-  hexDump(encBuf, len);
+  if (NEED_DEBUG > 0) hexDump(encBuf, len);
 #endif // NEED_DEBUG
 
-  // hexDump(encBuf, len);
-  // SerialUSB.print("  - Decrypting encBuf with SecretKey: ");
-  // SerialUSB.println((char*)SecretKey);
   struct AES_ctx ctx;
   AES_init_ctx(&ctx, SecretKey);
   uint8_t rounds = len / 16, steps = 0;
@@ -304,7 +307,7 @@ int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
     // encrypts in place, 16 bytes at a time
   } encBuf[steps] = 0;
 #ifdef NEED_DEBUG
-  hexDump(encBuf, len);
+  if (NEED_DEBUG > 0) hexDump(encBuf, len);
 #endif // NEED_DEBUG
   return len;
 }
@@ -325,21 +328,21 @@ uint16_t encryptECB(uint8_t* myBuf) {
   memset(encBuf, (olen - len), olen);
   memcpy(encBuf, myBuf, len);
 
-  // SerialUSB.println("myBuf:");
-  // hexDump(encBuf, olen);
   encBuf[len] = 0;
   AES_init_ctx(&ctx, (const uint8_t*)SecretKey);
   uint8_t rounds = olen / 16, steps = 0;
   for (uint8_t ix = 0; ix < rounds; ix++) {
     AES_ECB_encrypt(&ctx, encBuf + steps);
-  
+
     // void AES_ECB_decrypt(&ctx, encBuf + steps);
     steps += 16;
     // encrypts in place, 16 bytes at a time
   }
 #ifdef NEED_DEBUG
-  SerialUSB.println("encBuf:");
-  hexDump(encBuf, olen);
+  if (NEED_DEBUG > 0) {
+    SerialUSB.println("encBuf:");
+    hexDump(encBuf, olen);
+  }
 #endif // NEED_DEBUG
 
 
@@ -354,19 +357,23 @@ uint16_t encryptECB(uint8_t* myBuf) {
     // authenticate in place
     // at offset olen
     // OF COURSE IT'D BE NICE TO CHECK THAT OLEN+SHA224_DIGEST_SIZE DOESN'T BLOW UP THE BUFFER
-  
+
     hmac_sha224(key, 20, (unsigned char *)encBuf, olen, (unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
-  
+
 #ifdef NEED_DEBUG
-    SerialUSB.println("MAC, plain [" + String(olen) + "]:");
-    hexDump((unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
+    if (NEED_DEBUG > 0) {
+      SerialUSB.println("MAC, plain [" + String(olen) + "]:");
+      hexDump((unsigned char*)encBuf + olen, SHA224_DIGEST_SIZE);
+    }
 #endif // NEED_DEBUG
     olen += SHA224_DIGEST_SIZE;
 #ifdef NEED_DEBUG
-    SerialUSB.println("encBuf with MAC:");
-    hexDump(encBuf, olen);
+    if (NEED_DEBUG > 0) {
+      SerialUSB.println("encBuf with MAC:");
+      hexDump(encBuf, olen);
+    }
 #endif // NEED_DEBUG
-  
+
   }
   return olen;
 }
@@ -593,7 +600,7 @@ void sendJSONPacket() {
   digitalWrite(RFM_SWITCH, LOW);
   uint16_t olen = strlen((char*)msgBuf);
 #ifdef NEED_DEBUG
-  hexDump(msgBuf, olen);
+  if (NEED_DEBUG > 0) hexDump(msgBuf, olen);
 #endif
   if (needEncryption) {
     olen = encryptECB((uint8_t*)msgBuf);
@@ -611,11 +618,8 @@ void sendJSONPacket() {
   digitalWrite(RFM_SWITCH, 0);
   LoRa.beginPacket();
   if (needEncryption) {
-    // LoRa.print((char*)hexBuf);
-    // hexDump(encBuf, olen);
     LoRa.write(encBuf, olen);
   } else {
-    // LoRa.print(buff);
     LoRa.write(msgBuf, olen);
   }
   LoRa.endPacket();
