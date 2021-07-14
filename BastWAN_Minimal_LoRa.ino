@@ -25,7 +25,9 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <LoRa.h>
+// Click here to get the library: http://librarymanager/All#LoRa
 #include <LoRandom.h>
+// Click here to get the library: http://librarymanager/All#LoRandom
 #include "aes.c"
 #include "sha2.c"
 /*
@@ -55,7 +57,7 @@
   #define I2C_BUFFER_LENGTH_TX SERIAL_BUFFER_SIZE
 */
 #include "ArduinoJson.h"
-// Click here to get the library: http:// librarymanager/All#ArduinoJson
+// Click here to get the library: http://librarymanager/All#ArduinoJson
 
 #ifdef NEED_SSD1306
 #include "SSD1306Ascii.h"
@@ -69,6 +71,7 @@ SSD1306AsciiWire oled;
 
 #ifdef NEED_HDC1080
 #include <ClosedCube_HDC1080.h>
+// Click here to get the library: http://librarymanager/All#ClosedCube_HDC1080
 ClosedCube_HDC1080 hdc1080;
 #define hdc1080_waitout 30000
 double lastReading = 0;
@@ -76,6 +79,7 @@ float temp_hum_val[2] = {0};
 #define PING_DELAY 300000 // 5 minutes
 #ifdef NEED_CCS811 // Linked to NEED_HDC1080
 #include <SparkFunCCS811.h>
+// Click here to get the library: http://librarymanager/All#SparkFunCCS811
 #define CCS811_ADDR 0x5A // Alternate I2C Address
 uint16_t tvoc_co2[2] = {0};
 #define PIN_NOT_WAKE 5
@@ -86,6 +90,7 @@ CCS811 myCCS811(CCS811_ADDR);
 
 #ifdef NEED_BME
 #include "ClosedCube_BME680.h"
+// Click here to get the library: http://librarymanager/All#ClosedCube_BME680
 ClosedCube_BME680 bme680;
 double lastReading = 0;
 #define PING_DELAY 300000 // 5 minutes
@@ -93,12 +98,13 @@ double lastReading = 0;
 
 #ifdef NEED_EEPROM
 #include "SparkFun_External_EEPROM.h"
-// Click here to get the library: http:// librarymanager/All#SparkFun_External_EEPROM
+// Click here to get the library: http://librarymanager/All#SparkFun_External_EEPROM
 ExternalEEPROM myMem;
 #endif // NEED_EEPROM
 
 #ifdef NEED_DHT
 #include "DHT.h"
+// Click here to get the library: http://librarymanager/All#DHT_sensor_library
 #define DHTPIN 9 // what pin we're connected to
 #define DHTTYPE DHT22 // DHT 22  (AM2302)
 DHT dht(DHTPIN, DHTTYPE);
