@@ -131,11 +131,15 @@ float temp_hum_val[2] = {0};
 
 void setup() {
   // ---- HOUSEKEEPING ----
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, 1); // Turn on Blue LED
   SerialUSB.begin(115200);
   delay(3000);
 #ifdef NEED_DEBUG
   SerialUSB.println("\n\nBastWAN at your service!");
 #endif // NEED_DEBUG
+
+  digitalWrite(LED_BUILTIN, 1); // Turn on blue LED
 #ifdef NEED_SIDE_I2C
   // this has to happen first, if the I2C bus is powered by 5/6
 #ifdef NEED_DEBUG
@@ -455,11 +459,12 @@ void setup() {
 #endif // NEED_DHT
 #ifdef NEED_HDC1080
   displayHDC1080();
-  lastReading = millis();
 #endif // NEED_HDC1080
 #ifdef NEED_SHATEST
   shaTest();
 #endif // NEED_SHATEST
+  digitalWrite(LED_BUILTIN, 0); // Turn off blue LED
+  lastReading = millis();
 }
 
 void loop() {
@@ -490,6 +495,7 @@ void loop() {
   // }
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
+    digitalWrite(LED_BUILTIN, 1); // Turn on Blue LED
 #ifdef NEED_SSD1306
     oled.print("Incoming! ");
 #endif // NEED_SSD1306
@@ -500,6 +506,7 @@ void loop() {
       delay(10);
       msgBuf[ix++] = c;
     } msgBuf[ix] = 0;
+    digitalWrite(LED_BUILTIN, 0); // Turn off Blue LED
     int rssi = LoRa.packetRssi();
 #ifdef NEED_SSD1306
     oled.print("RSSI: ");
