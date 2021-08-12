@@ -1,3 +1,8 @@
+void displayHDC1080();
+void displayHT();
+void displaySGP30();
+void displayDHT();
+
 void handleSerial() {
   memset(msgBuf, 0, BUFF_LENGTH);
   int ix = 0;
@@ -114,6 +119,19 @@ void handleSerial() {
         SerialUSB.println("--> OCP Trim off");
         return;
       }
+    } else if (c == 'D' && c1 == 'H') {
+#ifdef NEED_BME
+      displayBME680();
+#endif
+#ifdef NEED_DHT
+      displayDHT();
+#endif
+#ifdef NEED_HDC1080
+      displayHDC1080();
+#endif
+#ifdef NEED_SGP30
+      displaySGP30();
+#endif
     }
   } else {
     // SerialUSB.println((char*)msgBuf);

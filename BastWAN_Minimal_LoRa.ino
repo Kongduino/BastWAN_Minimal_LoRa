@@ -4,20 +4,22 @@
 // only incoming packets will be displayed in the serial monitor.
 // If something doesn't work you won't know it though, unless
 // you plug in an OLED.
-#define NEED_DEBUG 0
+#define NEED_DEBUG 1
 // Uncomment this next line if you want to use a BME680
 // #define NEED_BME 1
 // Uncomment this next line if you want to use pins 5 & 6 for Gnd/Vcc
 // Particularly useful on a breadboard as they are next to SDA/SCL
 // #define NEED_SIDE_I2C 1
-// Uncomment this next line if you want to use a DHT22
+// Uncomment this next line if you want to use a DHTxx
 //#define NEED_DHT
 // Uncomment this next line if you want to use an SSD1306 OLED
 #define NEED_SSD1306 1
 // Uncomment this next line if you want to use an HDC1080
 #define NEED_HDC1080 1
-// Uncomment this next line if you want to use an CCS811
+// Uncomment this next line if you want to use a CCS811
 #define NEED_CCS811 1
+// Uncomment this next line if you want to use an SGP30
+//#define NEED_SGP30 1
 // Uncomment this next line if you want to use an EEPROM
 // #define NEED_EEPROM
 // #define NEED_SHATEST
@@ -69,6 +71,14 @@
 SSD1306AsciiWire oled;
 #endif // NEED_SSD1306
 
+#ifdef NEED_SGP30
+#include "sensirion_common.h"
+#include "sgp30.h"
+// https://github.com/Seeed-Studio/SGP30_Gas_Sensor
+uint16_t tvoc_co2[2] = {0};
+void displaySGP30();
+#endif // NEED_SGP30
+
 #ifdef NEED_HDC1080
 #include <ClosedCube_HDC1080.h>
 // Click here to get the library: http://librarymanager/All#ClosedCube_HDC1080
@@ -111,6 +121,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #define PING_DELAY 300000 // 5 minutes
 double lastReading = 0;
 float temp_hum_val[2] = {0};
+void displayDHT();
 #endif // NEED_DHT
 
 #include "helper.h"
@@ -138,8 +149,6 @@ void setup() {
 #ifdef NEED_DEBUG
   SerialUSB.println("\n\nBastWAN at your service!");
 #endif // NEED_DEBUG
-
-  digitalWrite(LED_BUILTIN, 1); // Turn on blue LED
 #ifdef NEED_SIDE_I2C
   // this has to happen first, if the I2C bus is powered by 5/6
 #ifdef NEED_DEBUG
@@ -338,18 +347,12 @@ void setup() {
 
 #ifdef Pavel
   setDeviceName("Pavel");
-  // enable autoPing for Pavel
-  double pingFrequency = 120000;
-  // 120,000 ms = 2 mn
-  bool needPing = true;
 #else
-  setDeviceName("Slavabien");
-  // enable autoPing for Pavel
-  double pingFrequency = 120000;
-  // 120,000 ms = 2 mn
-  bool needPing = true;
-  // Only this time for Slava.
+  setDeviceName("SensorNode 1");
 #endif // Pavel
+  pingFrequency = 3000019;
+  needPing = true;
+
 #ifdef NEED_SSD1306
   oled.println("Device name:"); oled.println(deviceName);
 #endif // NEED_SSD1306
@@ -361,10 +364,37 @@ void setup() {
   dht.begin();
 #endif // NEED_DHT
 
+#ifdef NEED_SGP30
+#ifdef NEED_SSD1306
+  oled.println("SGP30");
+#endif // NEED_SSD1306
+  s16 err;
+  u16 scaled_ethanol_signal, scaled_h2_signal;
+  while (sgp_probe() != STATUS_OK) {
+    Serial.println("SGP failed");
+    digitalWrite(LED_BUILTIN, 0);
+    delay(800);
+    digitalWrite(LED_BUILTIN, 1);
+    delay(800);
+  }
+  /*Read H2 and Ethanol signal in the way of blocking*/
+  err = sgp_measure_signals_blocking_read(&scaled_ethanol_signal, &scaled_h2_signal);
+  if (err == STATUS_OK) {
+    Serial.println("get ram signal!");
+  } else {
+    Serial.println("Error reading signals");
+#ifdef NEED_SSD1306
+    oled.println("Error reading signals");
+#endif // NEED_SSD1306
+  }
+  err = sgp_iaq_init();
+#endif // NEED_SGP30
+
 #ifdef NEED_HDC1080
 #ifdef NEED_SSD1306
   oled.println("HDC1080");
 #endif // NEED_SSD1306
+  SerialUSB.println("HDC1080:");
   hdc1080.begin(0x40); // I2C address
   SerialUSB.print("Manufacturer ID=0x");
   SerialUSB.println(hdc1080.readManufacturerId(), HEX); // 0x5449 ID of Texas Instruments
@@ -389,6 +419,7 @@ void setup() {
 #ifdef NEED_SSD1306
   oled.println("CCS811");
 #endif // NEED_SSD1306
+  SerialUSB.println("CCS811:");
   // This begins the CCS811 sensor and prints error status of .beginWithStatus()
   CCS811Core::CCS811_Status_e returnCode = myCCS811.beginWithStatus();
   Serial.print("CCS811 begin exited with: ");
@@ -457,14 +488,17 @@ void setup() {
   displayDHT();
   lastReading = millis();
 #endif // NEED_DHT
+#ifdef NEED_SGP30
+      displaySGP30();
+#endif // NEED_SGP30
 #ifdef NEED_HDC1080
   displayHDC1080();
+  lastReading = millis();
 #endif // NEED_HDC1080
 #ifdef NEED_SHATEST
   shaTest();
 #endif // NEED_SHATEST
   digitalWrite(LED_BUILTIN, 0); // Turn off blue LED
-  lastReading = millis();
 }
 
 void loop() {
@@ -475,12 +509,21 @@ void loop() {
     lastReading = millis();
   }
 #endif // NEED_BME
+
 #ifdef NEED_DHT
   if (t0 - lastReading >= PING_DELAY) {
     displayDHT();
     lastReading = millis();
   }
 #endif // NEED_DHT
+
+#ifdef NEED_SGP30
+  if (t0 - lastReading >= PING_DELAY) {
+    displaySGP30();
+    lastReading = millis();
+  }
+#endif // NEED_SGP30
+
 #ifdef NEED_HDC1080
   if (t0 - lastReading >= PING_DELAY) {
     displayHDC1080();
@@ -547,8 +590,8 @@ void loop() {
     // IF NEED_DEBUG IS NOT DEFINED
 #ifndef NEED_DEBUG
     doc["rssi"] = rssi;
-    serializeJson(doc, Serial);
-#endif
+    serializeJson(doc, SerialUSB); SerialUSB.println("");
+#endif // NEED_DEBUG
     // Print 4-byte ID
     const char *myID = doc["UUID"];
     // Print sender
@@ -575,7 +618,9 @@ void loop() {
       uint16_t co2 = mydata.as<uint16_t>();
       char buff[32];
       sprintf(buff, "H: %2.2f%% T: %2.2f *C\n", tvoc, co2);
+#ifdef NEED_DEBUG
       SerialUSB.print(buff);
+#endif // NEED_DEBUG
 #ifdef NEED_SSD1306
       oled.print(buff);
 #endif // NEED_SSD1306
@@ -877,7 +922,8 @@ void loop() {
       oled.println("Auto PING!");
 #endif // NEED_SSD1306
       sendPing();
-      lastAutoPing = millis();
+      // lastAutoPing = millis();
+      // done in sendPing
     }
   }
 }
@@ -917,7 +963,8 @@ void displayDHT() {
 #endif // NEED_SSD1306
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (it's a very slow sensor)
-  if (dht.readTempAndHumidity(temp_hum_val)) {
+//  if (dht.readTempAndHumidity(temp_hum_val)) {
+dht.readTempAndHumidity(temp_hum_val);
     SerialUSB.print("Humidity: ");
     SerialUSB.print(temp_hum_val[0]);
     SerialUSB.print(" % \t");
@@ -927,9 +974,9 @@ void displayDHT() {
 #ifdef NEED_SSD1306
     displayHT();
 #endif // NEED_SSD1306
-  } else {
-    SerialUSB.println("Failed to get temperature and humidity value.");
-  }
+//  } else {
+//    SerialUSB.println("Failed to get temperature and humidity value.");
+//  }
 }
 #endif // NEED_DHT
 
@@ -965,6 +1012,26 @@ void displayHDC1080() {
 }
 #endif // NEED_HDC1080
 
+#ifdef NEED_SGP30
+void displaySGP30() {
+  s16 err = 0;
+  u16 tvoc_ppb, co2_eq_ppm;
+  err = sgp_measure_iaq_blocking_read(&tvoc_ppb, &co2_eq_ppm);
+  if (err == STATUS_OK) {
+    tvoc_co2[0] = tvoc_ppb;
+    tvoc_co2[1] = co2_eq_ppm;
+    char buff[32];
+    sprintf(buff, "tVOC: %d co2: %d\n", tvoc_co2[0], tvoc_co2[1]);
+    Serial.print(buff);
+#ifdef NEED_SSD1306
+    displayHT();
+#endif // NEED_SSD1306
+  } else {
+    Serial.println("error reading IAQ values\n");
+  }
+}
+#endif // NEED_SGP30
+
 #ifdef NEED_SSD1306
 void displayHT() {
   char buff[32];
@@ -974,6 +1041,10 @@ void displayHT() {
   sprintf(buff, "tVOC: %d co2: %d\n", tvoc_co2[0], tvoc_co2[1]);
   oled.println(buff);
 #endif // NEED_CCS811
+#ifdef NEED_SGP30
+  sprintf(buff, "tVOC: %d co2: %d\n", tvoc_co2[0], tvoc_co2[1]);
+  oled.println(buff);
+#endif // NEED_SGP30
 }
 #endif // NEED_SSD1306
 

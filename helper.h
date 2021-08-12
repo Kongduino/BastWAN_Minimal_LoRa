@@ -58,7 +58,7 @@ uint8_t randomStock[256];
 uint8_t randomIndex = 0;
 float lastBattery = 0.0;
 double batteryUpdateDelay;
-uint32_t myFreq = 868125000;
+uint32_t myFreq = 868.125e6;
 int mySF = 10;
 uint8_t myBW = 7;
 uint8_t myCR = 5;
@@ -67,6 +67,7 @@ double BWs[10] = {
   41.7, 62.5, 125.0, 250.0, 500.0
 };
 uint16_t pingCounter = 0;
+
 
 #ifdef Pavel
 // enable autoPing for Pavel
@@ -265,7 +266,7 @@ int16_t decryptECB(uint8_t* myBuf, uint8_t olen) {
     unsigned char key[20];
     unsigned char digest[SHA224_DIGEST_SIZE];
     unsigned char mac[SHA224_DIGEST_SIZE];
-    memset(key, 0x0b, 20);// set up key
+    memset(key, 0x0b, 20); // set up key
 #ifdef NEED_DEBUG
     if (NEED_DEBUG > 0) {
       SerialUSB.println("Original HMAC:");
@@ -324,7 +325,9 @@ uint16_t encryptECB(uint8_t* myBuf) {
       else olen += 16 - (olen % 16);
     }
   }
+#ifdef NEED_DEBUG
   SerialUSB.println("\nolen: " + String(olen) + ", len: " + String(len));
+#endif // NEED_DEBUG
   memset(encBuf, (olen - len), olen);
   memcpy(encBuf, myBuf, len);
 
@@ -373,7 +376,6 @@ uint16_t encryptECB(uint8_t* myBuf) {
       hexDump(encBuf, olen);
     }
 #endif // NEED_DEBUG
-
   }
   return olen;
 }
@@ -381,6 +383,11 @@ uint16_t encryptECB(uint8_t* myBuf) {
 void stockUpRandom() {
   fillRandom(randomStock, 256);
   randomIndex = 0;
+#ifdef NEED_DEBUG
+  if (NEED_DEBUG > 0) {
+    hexDump(randomStock, 256);
+  }
+#endif // NEED_DEBUG
 }
 
 void setPongBack(bool x) {
@@ -592,7 +599,6 @@ void prepareJSONPacket(char *buff) {
 
 void sendJSONPacket() {
 #ifdef NEED_DEBUG
-
   SerialUSB.println("Sending JSON Packet... ");
 #endif
   LoRa.idle();
@@ -668,6 +674,10 @@ void sendPing() {
   doc["V"] = tvoc_co2[0];
   doc["C"] = tvoc_co2[1];
 #endif // NEED_CCS811
+#ifdef NEED_SGP30
+  doc["V"] = tvoc_co2[0];
+  doc["C"] = tvoc_co2[1];
+#endif // NEED_SGP30
 #endif // NEED_DHT || NEED_BME || NEED_HDC1080
 
   serializeJson(doc, (char*)msgBuf, BUFF_LENGTH);
@@ -680,6 +690,8 @@ void sendPing() {
   oled.println("PING sent!");
 #endif // NEED_SSD1306
   delay(1000);
+  lastAutoPing = millis();
+  // sending a ping, even manually, resets the clock
 }
 
 void sendPong(char *msgID, int rssi) {
@@ -765,4 +777,5 @@ void setAutoPing(char* buff) {
 #endif // NEED_SSD1306
   pingFrequency = fq;
   needPing = true;
+  lastAutoPing = millis();
 }
