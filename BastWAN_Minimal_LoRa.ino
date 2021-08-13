@@ -1033,6 +1033,7 @@ void displaySGP30() {
 #endif // NEED_SGP30
 
 #ifdef NEED_SSD1306
+#if defined(NEED_HDC1080) || defined(NEED_BME) || defined(NEED_DHT)
 void displayHT() {
   char buff[32];
   sprintf(buff, "H: %2.2f%% T: %2.2f *C\n", temp_hum_val[0], temp_hum_val[1]);
@@ -1046,6 +1047,7 @@ void displayHT() {
   oled.println(buff);
 #endif // NEED_SGP30
 }
+#endif // NEED_HDC1080 || NEED_BME || NEED_DHT
 #endif // NEED_SSD1306
 
 #ifdef NEED_SHATEST
